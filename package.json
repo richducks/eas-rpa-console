@@ -1,0 +1,21 @@
+{
+  "name": "eascloud-rpa-console",
+  "version": "0.13.0",
+  "private": true,
+  "description": "EAS Cloud multi-account RPA desktop console",
+  "author": {
+    "name": "EAS RPA Team",
+    "email": "noreply@localhost"
+  },
+  "homepage": "https://localhost/eas-rpa-console",
+  "desktopName": "eas-rpa-console.desktop",
+  "main": "src/main.js",
+  "allowScripts": {
+    "electron@38.8.6": true,
+    "keytar@7.9.0": true
+  },
+  "dependencies": {
+    "keytar": "^7.9.0",
+    "yaml": "^2.9.1"
+  }
+}
