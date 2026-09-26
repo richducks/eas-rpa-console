@@ -1,0 +1,84 @@
+{
+  "name": "eascloud-rpa-console",
+  "version": "0.13.0",
+  "private": true,
+  "description": "EAS Cloud multi-account RPA desktop console",
+  "author": {
+    "name": "EAS RPA Team",
+    "email": "noreply@localhost"
+  },
+  "homepage": "https://localhost/eas-rpa-console",
+  "desktopName": "eas-rpa-console.desktop",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:linux": "electron-builder --linux AppImage deb dir --x64",
+    "build:windows": "electron-builder --win nsis --x64",
+    "build:web": "node scripts/build-web.js",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer/app.js && node --check src/core/config.js && node --check src/core/environment.js && node --check src/core/runner.js && node --check src/core/windows.js",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "^38.2.0",
+    "electron-builder": "^26.15.3"
+  },
+  "allowScripts": {
+    "electron@38.8.6": true,
+    "keytar@7.9.0": true
+  },
+  "dependencies": {
+    "keytar": "^7.9.0",
+    "yaml": "^2.9.1"
+  },
+  "build": {
+    "appId": "com.eascloud.rpa.console",
+    "productName": "EAS自动登录中心",
+    "artifactName": "EAS-RPA-Console-${version}-${arch}.${ext}",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "build/java/*.jar",
+      "package.json",
+      "node_modules/yaml/**/*",
+      "node_modules/keytar/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/keytar/build/Release/*.node",
+      "src/automation/*.py",
+      "build/java/*.jar"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "dir"
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "executableName": "eas-rpa-console",
+      "syncDesktopName": true
+    },
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "EAS-RPA-Console-${version}-Setup-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "appImage": {
+      "artifactName": "EAS-RPA-Console-${version}-${arch}.AppImage"
+    },
+    "deb": {
+      "artifactName": "EAS-RPA-Console-${version}-${arch}.deb",
+      "synopsis": "EAS Cloud 多账号自动登录控制中心",
+      "description": "用于 Ubuntu 的 EAS Cloud 多账号自动登录、Keyring 凭据和环境能力管理工具。"
+    }
+  }
+}
