@@ -22,7 +22,7 @@ const logs = [
 ];
 
 const pageMeta = {
-  dashboard: ['登录账号簿', '选择账号、修改详情并批量登录'],
+  dashboard: ['登录账号簿', '直接编辑账号并批量登录'],
   accounts: ['账号管理', '维护登录账号与数据中心配置'],
   credentials: ['Keyring 凭据', '在系统 Secret Service 中安全维护账号密码'],
   environment: ['环境探测', '检查桌面会话及自动化能力'],
@@ -101,33 +101,62 @@ function renderLedger() {
   });
   $('#account-book-subtitle').textContent = selectedDatacenter || '选择数据中心查看账号';
   $('#account-book-count').textContent = centerAccounts.length;
-  const inlineDetail = $('#account-detail-inline');
   const accountBook = $('#ledger-account-book');
-  accountBook.innerHTML = centerAccounts.map((account, index) => `<div class="ledger-account ${account.id === selectedAccountId ? 'active' : ''}" data-ledger-account="${escapeHtml(account.id)}"><div class="task-avatar">${String(index + 1).padStart(2, '0')}</div><div><strong>${escapeHtml(account.name || account.id)}</strong><small>${escapeHtml(account.username)}</small></div><i class="status-dot ${account.enabled ? 'on' : ''}"></i><span class="account-chevron">⌄</span></div>`).join('') || '<div class="empty">此数据中心暂无账号</div>';
-  $$('[data-ledger-account]').forEach(item => item.onclick = () => {
-    const collapsing = selectedAccountId === item.dataset.ledgerAccount;
-    selectedAccountId = collapsing ? null : item.dataset.ledgerAccount;
-    detailEditing = !collapsing;
-    renderLedger();
-  });
-  const account = accounts.find(item => item.id === selectedAccountId);
-  inlineDetail.hidden = !account;
-  if (account) accountBook.querySelector(`[data-ledger-account="${CSS.escape(account.id)}"]`)?.after(inlineDetail);
-  else accountBook.after(inlineDetail);
-  const form = $('#ledger-detail-form');
-  ['#detail-username', '#detail-password', '#detail-enabled'].forEach(selector => { $(selector).disabled = !account || !detailEditing; });
-  $('#detail-edit').disabled = !account;
-  $('#detail-delete').disabled = !account;
-  $('#detail-edit').hidden = detailEditing;
-  $('#detail-save').hidden = !detailEditing;
-  $('#detail-cancel').hidden = !detailEditing;
-  if (!account) {
-    $('#detail-username').value = ''; $('#detail-password').value = ''; $('#detail-enabled').checked = false;
-    return;
+  accountBook.innerHTML = centerAccounts.map((account, index) => `<form class="account-edit-row" data-account-row="${escapeHtml(account.id)}">
+    <div class="task-avatar">${String(index + 1).padStart(2, '0')}</div>
+    <label><span>账号</span><input name="username" value="${escapeHtml(account.username)}" required autocomplete="username" /></label>
+    <label><span>密码</span><input name="password" type="password" autocomplete="new-password" placeholder="留空不修改" /></label>
+    <label class="row-enabled" title="参与批量登录"><input name="enabled" type="checkbox" ${account.enabled ? 'checked' : ''} /><i></i><span>启用</span></label>
+    <button class="row-save" type="submit">保存</button>
+    <button class="row-delete" type="button" data-delete-account="${escapeHtml(account.id)}">删除</button>
+  </form>`).join('') || '<div class="empty">此数据中心暂无账号</div>';
+  $$('[data-account-row]').forEach(form => form.onsubmit = saveAccountRow);
+  $$('[data-delete-account]').forEach(button => button.onclick = () => deleteAccountRow(button.dataset.deleteAccount));
+}
+
+async function saveAccountRow(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const account = accounts.find(item => item.id === form.dataset.accountRow);
+  if (!account) return;
+  const previous = { username: account.username, name: account.name, enabled: account.enabled };
+  const data = new FormData(form);
+  const username = String(data.get('username') || '').trim();
+  const password = String(data.get('password') || '');
+  if (!username) return showToast('用户名不能为空');
+  account.username = username;
+  account.name = username;
+  account.enabled = data.get('enabled') === 'on';
+  const button = form.querySelector('.row-save');
+  button.disabled = true; button.textContent = '…';
+  const saved = await persistConfig();
+  if (!saved.valid) {
+    Object.assign(account, previous);
+    button.disabled = false; button.textContent = '保存';
+    return showToast(saved.errors[0]);
   }
-  $('#detail-username').value = account.username || '';
-  $('#detail-password').value = '';
-  $('#detail-enabled').checked = Boolean(account.enabled);
+  if (password) {
+    const stored = await window.easDesktop.storeCredential(account.id, password);
+    form.elements.password.value = '';
+    if (!stored.stored) {
+      button.disabled = false; button.textContent = '保存';
+      return showToast('账号已保存，但 Keyring 密码写入失败');
+    }
+  }
+  renderAccounts(); renderCredentials(); renderTasks(); renderLedger();
+  showToast(password ? '账号和密码已保存' : '账号已保存');
+}
+
+async function deleteAccountRow(accountId) {
+  const account = accounts.find(item => item.id === accountId);
+  if (!account || !window.confirm(`确认删除账号“${account.name || account.id}”？其 Keyring 密码也会一并移除。`)) return;
+  const index = accounts.findIndex(item => item.id === account.id);
+  accounts.splice(index, 1);
+  const result = await persistConfig();
+  if (!result.valid) { accounts.splice(index, 0, account); return showToast(result.errors[0]); }
+  await window.easDesktop.deleteCredential(account.id);
+  renderAccounts(); renderCredentials(); renderTasks(); renderLedger();
+  showToast('账号已删除');
 }
 
 function renderAccounts() {
@@ -317,7 +346,6 @@ function goTo(page) {
 $$('.nav-item').forEach(item => item.onclick = () => goTo(item.dataset.page));
 $$('[data-goto]').forEach(item => item.onclick = () => goTo(item.dataset.goto));
 $('#run-button').onclick = runFoundation;
-$('#detect-button').onclick = async () => { await probeEnvironment(); goTo('environment'); };
 $('#probe-button').onclick = probeEnvironment;
 $('#clear-activity').onclick = () => { activities = []; renderActivity(); };
 $('#clear-logs').onclick = () => { logs.length = 0; renderLogs(); };
@@ -380,19 +408,19 @@ $('#ledger-add-account').onclick = openAccountModal;
 $('#refresh-datacenters').onclick = async () => {
   const button = $('#refresh-datacenters');
   button.disabled = true; button.textContent = '…';
-  $('#datacenter-source').textContent = '正在读取 EAS 登录窗口…';
+  $('#datacenter-source').textContent = '正在读取 EAS 安装目录…';
   const result = await window.easDesktop.discoverDataCenters();
   button.disabled = false; button.textContent = '↻';
   if (!result.ok) {
-    $('#datacenter-source').textContent = '读取失败，可再次刷新';
-    return showToast(result.code === 'DATACENTER_COMBO_NOT_FOUND' ? '未找到数据中心下拉框，请确认 Java 无障碍已启用' : result.message || '数据中心读取失败');
+    $('#datacenter-source').textContent = '本地配置读取失败';
+    return showToast(result.message || '数据中心读取失败');
   }
   discoveredDatacenters = result.dataCenters;
   appConfig.ui.data_centers = discoveredDatacenters;
   await window.easDesktop.saveConfig(appConfig);
   selectedDatacenter = discoveredDatacenters[0] || selectedDatacenter;
   selectedAccountId = null;
-  $('#datacenter-source').textContent = `已从 EAS 获取 ${discoveredDatacenters.length} 项`;
+  $('#datacenter-source').textContent = `${result.windowBackend === 'install-directory' ? '安装目录' : '本地配置'} · ${discoveredDatacenters.length} 项`;
   renderLedger();
   showToast(`已获取 ${discoveredDatacenters.length} 个数据中心`);
 };
@@ -419,50 +447,6 @@ $('#account-form').onsubmit = async (event) => {
   }
   selectedAccountId = accountId;
   renderAccounts(); renderTasks(); renderCredentials(); renderLedger(); event.currentTarget.reset(); $('#account-modal').classList.remove('open'); showToast('账号已添加');
-};
-
-$('#ledger-detail-form').onsubmit = async event => {
-  event.preventDefault();
-  const account = accounts.find(item => item.id === selectedAccountId);
-  if (!account) return;
-  const button = event.currentTarget.querySelector('button[type="submit"]');
-  button.disabled = true; button.textContent = '保存中…';
-  const password = $('#detail-password').value;
-  account.username = $('#detail-username').value.trim();
-  account.name = account.username;
-  account.enabled = $('#detail-enabled').checked;
-  const saved = await persistConfig();
-  if (!saved.valid) {
-    button.disabled = false; button.textContent = '保存修改';
-    return showToast(saved.errors[0]);
-  }
-  if (password) {
-    const stored = await window.easDesktop.storeCredential(account.id, password);
-    $('#detail-password').value = '';
-    if (!stored.stored) {
-      button.disabled = false; button.textContent = '保存修改';
-      return showToast('账号资料已保存，但 Keyring 密码写入失败');
-    }
-  }
-  detailEditing = false;
-  renderAccounts(); renderCredentials(); renderTasks(); renderLedger();
-  button.disabled = false; button.textContent = '保存修改';
-  showToast(password ? '账号和 Keyring 密码已保存' : '账号修改已保存');
-};
-
-$('#detail-edit').onclick = () => { detailEditing = true; renderLedger(); $('#detail-username').focus(); };
-$('#detail-cancel').onclick = () => { detailEditing = false; renderLedger(); };
-$('#detail-delete').onclick = async () => {
-  const account = accounts.find(item => item.id === selectedAccountId);
-  if (!account || !window.confirm(`确认删除账号“${account.name || account.id}”？其 Keyring 密码也会一并移除。`)) return;
-  await window.easDesktop.deleteCredential(account.id);
-  const index = accounts.findIndex(item => item.id === account.id);
-  accounts.splice(index, 1);
-  const result = await persistConfig();
-  if (!result.valid) { accounts.splice(index, 0, account); return showToast(result.errors[0]); }
-  selectedAccountId = null; detailEditing = false;
-  renderAccounts(); renderCredentials(); renderTasks(); renderLedger();
-  showToast('账号已删除');
 };
 
 $('#credential-form').onsubmit = async event => {
