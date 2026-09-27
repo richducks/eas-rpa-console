@@ -18,8 +18,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 960,
     height: 680,
-    minWidth: 720,
-    minHeight: 520,
+    minWidth: 360,
+    minHeight: 280,
     resizable: true,
     title: 'EAS 自动登录中心',
     backgroundColor: '#f4f7fb',
@@ -173,6 +173,10 @@ app.whenReady().then(() => {
         { name: '全部文件', extensions: ['*'] }
       ]
     });
+    return result.canceled ? null : result.filePaths[0];
+  });
+  ipcMain.handle('client-directory:pick', async () => {
+    const result = await dialog.showOpenDialog({ title: '选择 EAS 客户端目录', properties: ['openDirectory'] });
     return result.canceled ? null : result.filePaths[0];
   });
 

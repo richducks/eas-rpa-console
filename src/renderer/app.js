@@ -235,6 +235,7 @@ async function loadConfig() {
   accounts = appConfig.accounts;
   discoveredDatacenters = appConfig.ui.data_centers || [];
   $('#launcher-path').value = appConfig.launcher.desktop_file || '';
+  $('#client-directory').value = appConfig.launcher.client_directory || '';
   $('#startup-timeout').value = appConfig.global.startup_timeout_seconds;
   $('#login-timeout').value = appConfig.global.login_timeout_seconds;
   $('#retry-count').value = appConfig.global.retry_count;
@@ -386,6 +387,7 @@ function initializeColumnResizers() {
 }
 $('#save-settings').onclick = async () => {
   appConfig.launcher.desktop_file = $('#launcher-path').value.trim() || null;
+  appConfig.launcher.client_directory = $('#client-directory').value.trim() || null;
   appConfig.global.startup_timeout_seconds = Number($('#startup-timeout').value);
   appConfig.global.login_timeout_seconds = Number($('#login-timeout').value);
   appConfig.global.retry_count = Number($('#retry-count').value);
@@ -396,6 +398,7 @@ $('#save-settings').onclick = async () => {
   showToast(result.valid ? `设置已保存至 ${configPath}` : result.errors[0]);
 };
 $('#browse-launcher').onclick = async () => { const file = await window.easDesktop.pickLauncher(); if (file) $('#launcher-path').value = file; };
+$('#browse-client-directory').onclick = async () => { const directory = await window.easDesktop.pickClientDirectory(); if (directory) $('#client-directory').value = directory; };
 function openAccountModal() {
   if (!selectedDatacenter) return showToast('请先选择数据中心');
   $('#account-modal-context').textContent = `添加到 ${selectedDatacenter}，密码由系统 Keyring 保护`;
@@ -408,7 +411,7 @@ $('#ledger-add-account').onclick = openAccountModal;
 $('#refresh-datacenters').onclick = async () => {
   const button = $('#refresh-datacenters');
   button.disabled = true; button.textContent = '…';
-  $('#datacenter-source').textContent = '正在读取 EAS 安装目录…';
+  $('#datacenter-source').textContent = '正在读取客户端目录…';
   const result = await window.easDesktop.discoverDataCenters();
   button.disabled = false; button.textContent = '↻';
   if (!result.ok) {

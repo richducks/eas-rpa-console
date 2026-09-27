@@ -4,7 +4,7 @@
   const storageKey = 'eas-rpa-web-config';
   const defaultConfig = {
     global: { startup_timeout_seconds: 120, login_timeout_seconds: 60, poll_interval_seconds: 0.5, retry_count: 1, continue_on_error: true, screenshot_on_failure: false, max_instances: null },
-    launcher: { desktop_file: '', command: null, working_directory: null },
+    launcher: { desktop_file: '', command: null, working_directory: null, client_directory: null },
     ui: { login_window_title: '金蝶EAS Cloud系统登录', success_window_title: null, backend_order: ['atspi', 'keyboard', 'image'], template_directory: 'templates', data_centers: [] },
     accounts: []
   };
@@ -35,7 +35,8 @@
       return dataCenters.length ? { ok: true, dataCenters, windowBackend: 'manual-web' } : { ok: false, code: 'WEB_MANUAL_CANCELLED', message: '未添加数据中心' };
     },
     onTaskEvent: () => () => {},
-    pickLauncher: async () => null
+    pickLauncher: async () => null,
+    pickClientDirectory: async () => null
   };
 
   document.addEventListener('DOMContentLoaded', () => {

@@ -17,5 +17,6 @@ contextBridge.exposeInMainWorld('easDesktop', {
     ipcRenderer.on('task:event', wrapped);
     return () => ipcRenderer.removeListener('task:event', wrapped);
   },
-  pickLauncher: () => ipcRenderer.invoke('launcher:pick')
+  pickLauncher: () => ipcRenderer.invoke('launcher:pick'),
+  pickClientDirectory: () => ipcRenderer.invoke('client-directory:pick')
 });

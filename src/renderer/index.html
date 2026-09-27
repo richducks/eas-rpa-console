@@ -24,7 +24,7 @@
 
         <div class="sidebar-foot">
           <div class="security-note"><span>✓</span><div><strong>凭据安全</strong><small>密码仅从系统 Keyring 读取</small></div></div>
-          <div class="version">EAS RPA Console <span>v0.17.0</span></div>
+          <div class="version">EAS RPA Console <span>v0.18.0</span></div>
         </div>
       </aside>
 
@@ -82,7 +82,7 @@
         <section class="content page" id="settings-page">
           <div class="section-toolbar"><div><h2>系统设置</h2><p>配置启动器、等待策略和失败处理方式。</p></div><button class="primary-btn" id="save-settings">保存设置</button></div>
           <div class="settings-grid">
-            <section class="panel form-panel"><h3>EAS 启动器</h3><label>Desktop 文件</label><div class="file-input"><input id="launcher-path" value="/opt/Kingdee/EASCloud.desktop" /><button id="browse-launcher">浏览</button></div><small>将安全解析 Desktop 文件中的 Exec 命令，不经桌面图标启动。</small></section>
+            <section class="panel form-panel"><h3>EAS 客户端</h3><label>客户端目录</label><div class="file-input"><input id="client-directory" placeholder="例如：/home/user/kingdee/eas/client" /><button id="browse-client-directory">选择</button></div><small>手动指定客户端目录；数据中心从 deploy/client/datacenters.xml 读取。相对路径以启动文件的工作目录为基准。</small><label>Desktop 启动文件</label><div class="file-input"><input id="launcher-path" value="/opt/Kingdee/EASCloud.desktop" /><button id="browse-launcher">选择</button></div><small>启动命令与工作目录从 Desktop 文件解析，不通过桌面图标启动。</small></section>
             <section class="panel form-panel"><h3>任务策略</h3><div class="field-row"><label>启动超时<input id="startup-timeout" type="number" value="120" /><em>秒</em></label><label>登录超时<input id="login-timeout" type="number" value="60" /><em>秒</em></label></div><div class="field-row"><label>重试次数<input id="retry-count" type="number" value="1" /></label><label>轮询间隔<input id="poll-interval" type="number" value="0.5" step="0.1" /><em>秒</em></label></div><label class="switch-row"><span><strong>失败后继续</strong><small>当前账号失败时继续处理下一个</small></span><input id="continue-on-error" type="checkbox" checked /><i></i></label><label class="switch-row"><span><strong>失败时截图</strong><small>仅截取目标窗口并遮盖敏感区域</small></span><input id="screenshot-on-failure" type="checkbox" checked /><i></i></label></section>
           </div>
         </section>
