@@ -8,6 +8,10 @@ let activeSingleAccountId = null;
 let taskStatuses = {};
 let selectedAccountId = null;
 let selectedDatacenter = null;
+try {
+  selectedDatacenter = localStorage.getItem('eas-selected-datacenter');
+  document.body.classList.toggle('dark', localStorage.getItem('eas-theme') === 'dark');
+} catch { /* Preferences are optional in restricted browser contexts. */ }
 let detailEditing = false;
 let discoveredDatacenters = [];
 let draggedDatacenter = null;
@@ -64,6 +68,10 @@ function renderTasks(statuses = {}) {
 function renderLedger() {
   const datacenters = [...new Set([...discoveredDatacenters, ...accounts.map(account => account.data_center)].filter(Boolean))];
   if (!selectedDatacenter || !datacenters.includes(selectedDatacenter)) selectedDatacenter = datacenters[0] || null;
+  try {
+    if (selectedDatacenter) localStorage.setItem('eas-selected-datacenter', selectedDatacenter);
+    else localStorage.removeItem('eas-selected-datacenter');
+  } catch { /* Keep the UI usable when storage is unavailable. */ }
   const centerAccounts = accounts.filter(account => account.data_center === selectedDatacenter);
   if (selectedAccountId && !centerAccounts.some(account => account.id === selectedAccountId)) selectedAccountId = null;
   $('#ledger-datacenter-list').innerHTML = datacenters.map((center, index) => {
@@ -407,6 +415,7 @@ async function probeEnvironment() {
 }
 
 function goTo(page) {
+  try { localStorage.setItem('eas-active-page', page); } catch { /* Optional preference. */ }
   document.body.classList.toggle('dashboard-view', page === 'dashboard');
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   $$('.page').forEach(p => p.classList.toggle('active', p.id === `${page}-page`));
@@ -423,7 +432,10 @@ $('#run-button').onclick = runFoundation;
 $('#probe-button').onclick = probeEnvironment;
 $('#clear-activity').onclick = () => { activities = []; renderActivity(); };
 $('#clear-logs').onclick = () => { logs.length = 0; renderLogs(); };
-$('#theme-button').onclick = () => document.body.classList.toggle('dark');
+$('#theme-button').onclick = () => {
+  document.body.classList.toggle('dark');
+  try { localStorage.setItem('eas-theme', document.body.classList.contains('dark') ? 'dark' : 'light'); } catch { /* Optional preference. */ }
+};
 $('#settings-button').onclick = () => $('#settings-tabs').hidden ? goTo('settings') : goTo('dashboard');
 $('#dashboard-theme-button').onclick = () => $('#theme-button').click();
 $('#dashboard-settings-button').onclick = () => goTo('settings');
@@ -576,7 +588,13 @@ $('#credential-form').onsubmit = async event => {
 async function boot() {
   renderActivity(); renderLogs();
   initializeColumnResizers();
-  try { await loadConfig(); window.easDesktop.onTaskEvent(handleTaskEvent); await probeEnvironment(); }
+  try {
+    await loadConfig();
+    const savedPage = localStorage.getItem('eas-active-page');
+    if (['dashboard', 'settings', 'environment', 'logs'].includes(savedPage)) goTo(savedPage);
+    window.easDesktop.onTaskEvent(handleTaskEvent);
+    await probeEnvironment();
+  }
   catch (error) { console.error('Renderer initialization failed', error); addLog('WARN', `初始化失败：${error.message}`); showToast(`初始化失败：${error.message}`); }
 }
 

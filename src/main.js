@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -14,10 +14,42 @@ let configStore;
 let logger;
 let runner;
 
+function loadWindowState() {
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'window-state.json'), 'utf8'));
+    if (![state.x, state.y, state.width, state.height].every(Number.isFinite)) return null;
+    const display = screen.getAllDisplays().find(({ workArea }) =>
+      state.x < workArea.x + workArea.width && state.x + state.width > workArea.x &&
+      state.y < workArea.y + workArea.height && state.y + state.height > workArea.y
+    );
+    if (!display) return null;
+    const area = display.workArea;
+    const width = Math.max(280, Math.min(state.width, area.width));
+    const height = Math.max(280, Math.min(state.height, area.height));
+    return {
+      x: Math.max(area.x, Math.min(state.x, area.x + area.width - width)),
+      y: Math.max(area.y, Math.min(state.y, area.y + area.height - height)),
+      width, height, maximized: state.maximized === true
+    };
+  } catch { return null; }
+}
+
+function saveWindowState(win) {
+  const file = path.join(app.getPath('userData'), 'window-state.json');
+  const temporary = `${file}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(temporary, JSON.stringify({ ...win.getNormalBounds(), maximized: win.isMaximized() }), { mode: 0o600 });
+    fs.renameSync(temporary, file);
+  } catch (error) { console.error('Failed to save window state', error); }
+}
+
 function createWindow() {
+  const state = loadWindowState();
   const win = new BrowserWindow({
-    width: 960,
-    height: 680,
+    width: state?.width || 960,
+    height: state?.height || 680,
+    ...(state ? { x: state.x, y: state.y } : {}),
     minWidth: 280,
     minHeight: 280,
     resizable: true,
@@ -30,6 +62,9 @@ function createWindow() {
       nodeIntegration: false
     }
   });
+
+  win.on('close', () => saveWindowState(win));
+  if (state?.maximized) win.maximize();
 
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
