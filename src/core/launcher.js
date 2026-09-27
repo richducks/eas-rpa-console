@@ -2,6 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const { parseDesktopFile } = require('./desktop-file');
 
+function resolveClientDirectory(config, baseDirectory = process.cwd()) {
+  const configured = config.launcher?.client_directory;
+  if (!configured) return null;
+  const chosen = path.resolve(baseDirectory, configured);
+  return ['client.sh', 'client.bat'].some(file => fs.existsSync(path.join(chosen, 'client', 'bin', file))) ? path.join(chosen, 'client') : chosen;
+}
+
 function resolveLaunchSpec(config) {
   const launcher = config.launcher || {};
   if (Array.isArray(launcher.command) && launcher.command.length) {
@@ -13,8 +20,15 @@ function resolveLaunchSpec(config) {
       source: 'config.command'
     };
   }
-  if (!launcher.desktop_file || !fs.existsSync(launcher.desktop_file)) throw new Error('EAS Desktop 启动器不存在');
-  const parsed = parseDesktopFile(launcher.desktop_file);
+  const desktop = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file) : null;
+  const clientDirectory = resolveClientDirectory(config, launcher.working_directory || desktop?.workingDirectory || process.cwd());
+  if (clientDirectory && process.platform !== 'win32') {
+    const startupScript = path.join(clientDirectory, 'bin', 'client.sh');
+    if (!fs.existsSync(startupScript)) throw new Error(`所选 EAS 客户端目录缺少启动文件：${startupScript}`);
+    return { executable: '/bin/sh', args: [startupScript], workingDirectory: path.dirname(startupScript), source: startupScript };
+  }
+  if (!desktop) throw new Error('EAS Desktop 启动器不存在');
+  const parsed = desktop;
   return {
     executable: parsed.argv[0],
     args: parsed.argv.slice(1),
@@ -28,4 +42,4 @@ function publicLaunchSpec(spec) {
   return { executable: path.basename(spec.executable), argumentCount: spec.args.length, source: spec.source, workingDirectory: spec.workingDirectory };
 }
 
-module.exports = { resolveLaunchSpec, publicLaunchSpec };
+module.exports = { resolveLaunchSpec, resolveClientDirectory, publicLaunchSpec };

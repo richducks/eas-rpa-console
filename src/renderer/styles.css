@@ -42,3 +42,34 @@ body.dark .account-edit-row{background:var(--panel)}body.dark .account-edit-row:
 .account-edit-row{grid-template-columns:24px minmax(92px,1fr) minmax(92px,1fr) 48px 42px 42px;gap:5px;min-width:390px;padding:5px 7px;align-items:center}
 .account-edit-row label>span{display:none}.account-edit-row .task-avatar{width:24px;height:24px;border-radius:6px;font-size:9px}.account-edit-row input[type="password"],.account-edit-row input:not([type]){height:24px;padding:0 6px;border-radius:6px;font-size:10px}.row-enabled{height:24px;gap:3px;font-size:8px}.row-enabled i{width:24px;height:14px}.row-enabled i:after{width:10px;height:10px}.row-enabled input:checked+i:after{left:12px}.row-save,.row-delete{height:24px;padding:0 4px;border-radius:6px;font-size:9px}
 @media(max-width:600px){.topbar{padding:0 7px}.system-status{display:none}.content{padding:6px}.ledger-toolbar{height:31px}.ledger-grid{--datacenter-width:130px;grid-template-columns:minmax(105px,var(--datacenter-width)) 4px minmax(0,1fr);height:calc(100vh - 91px);min-height:180px}.ledger-head{height:42px;padding:6px 7px}.ledger-head p{display:none}#ledger-datacenter-list,#ledger-account-book{height:calc(100% - 42px)}.datacenter-item{padding:6px;gap:5px}.datacenter-icon{display:none}.account-edit-row{min-width:360px}.batch-login-btn{min-width:80px;padding:0 8px}.ledger-toolbar small{display:none}.settings-tabs{padding-left:6px}.settings-tabs button{padding:0 8px}.modal{width:calc(100vw - 16px);padding:16px}}
+
+/* Dashboard controls live in the columns, leaving the workspace full height. */
+body.dashboard-view .topbar{display:none}
+body.dashboard-view #dashboard-page{padding:6px}
+.ledger-grid{grid-template-columns:minmax(72px,min(var(--datacenter-width),calc(100% - 124px))) 4px minmax(0,1fr);height:calc(100dvh - 12px);min-height:0}
+.ledger-list{display:grid;grid-template-rows:48px minmax(0,1fr) 36px}
+.ledger-detail{display:grid;grid-template-rows:48px minmax(0,1fr)}
+#ledger-datacenter-list,#ledger-account-book{height:auto;min-height:0;overflow-y:auto;overflow-x:hidden}
+.ledger-head{min-width:0}.ledger-title{min-width:0}.ledger-title h3,.ledger-title p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ledger-head .head-actions{flex:0 0 auto;gap:5px}.enabled-count{font-size:9px;color:var(--muted);white-space:nowrap}.batch-login-btn{min-width:76px;height:26px;padding:0 8px;border-radius:6px;font-size:10px;white-space:nowrap}
+.ledger-foot{display:flex;align-items:center;justify-content:space-between;min-width:0;padding:3px 5px;border-top:1px solid var(--line);gap:3px}
+.ledger-foot .system-status{min-width:0;padding:3px 5px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ledger-foot .system-status i{flex:0 0 auto}
+.ledger-foot-actions{display:flex;gap:3px;flex:0 0 auto}.ledger-foot .icon-btn{width:24px;height:24px;border-radius:5px;font-size:12px}
+.web-mode .ledger-foot .system-status{background:#fff7e8;border-color:#f1d8a8;color:#9a6818}.web-mode .ledger-foot .system-status i{background:#d7972f;box-shadow:0 0 0 3px rgba(215,151,47,.12)}
+.datacenter-item{user-select:none}.datacenter-item.dragging{opacity:.45}.datacenter-item.drop-before{box-shadow:inset 0 3px var(--purple)}.datacenter-item.drop-after{box-shadow:inset 0 -3px var(--purple)}
+#ledger-account-book{container-type:inline-size}
+.account-edit-row{min-width:0;grid-template-columns:20px minmax(65px,1fr) minmax(65px,1fr) 40px 36px 36px;gap:4px;padding:4px 6px}
+.account-edit-row label{min-width:0}.account-edit-row input[type="password"],.account-edit-row input:not([type]){min-width:0;width:100%}.account-edit-row .task-avatar{width:20px;height:20px;font-size:8px}.row-enabled{min-width:0}.row-save,.row-delete{min-width:0;width:100%;padding:0 2px}
+@container (max-width:500px){.account-edit-row{grid-template-columns:20px minmax(0,1fr) 32px 32px;grid-template-rows:24px 24px}.account-edit-row .task-avatar{grid-column:1;grid-row:1/3}.account-edit-row label:has(input[name="username"]){grid-column:2;grid-row:1}.account-edit-row label:has(input[name="password"]){grid-column:2;grid-row:2}.account-edit-row .row-enabled{grid-column:3/5;grid-row:1;justify-content:center}.account-edit-row .row-enabled span{display:none}.account-edit-row .row-save{grid-column:3;grid-row:2}.account-edit-row .row-delete{grid-column:4;grid-row:2}}
+@media(max-width:600px){.ledger-grid{--datacenter-width:130px;grid-template-columns:minmax(72px,min(var(--datacenter-width),calc(100% - 124px))) 4px minmax(0,1fr);height:calc(100dvh - 12px);min-height:0}.ledger-list{grid-template-rows:42px minmax(0,1fr) 34px}.ledger-detail{grid-template-rows:42px minmax(0,1fr)}#ledger-datacenter-list,#ledger-account-book{height:auto}.ledger-foot .system-status span{display:none}.ledger-head .enabled-count{display:none}.datacenter-item{min-height:38px}.datacenter-delete{width:20px;height:20px}}
+@media(max-width:420px){.ledger-head .queue-count{display:none}.ledger-head .batch-login-btn{min-width:66px;padding:0 4px}.ledger-head .head-actions{gap:3px}.ledger-head h3{font-size:11px}}
+
+/* Each account can be launched independently while actions remain visible. */
+.account-edit-row{grid-template-columns:20px minmax(60px,1fr) minmax(60px,1fr) 36px 46px 34px 34px}
+.row-login{height:24px;min-width:0;width:100%;padding:0 2px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--purple);font-size:9px;white-space:nowrap;cursor:pointer}
+.row-login:hover{border-color:var(--purple)}
+@container (max-width:500px){.account-edit-row{grid-template-columns:20px minmax(0,1fr) 40px 34px 34px;grid-template-rows:24px 24px}.account-edit-row .row-enabled{grid-column:3/6;grid-row:1}.account-edit-row .row-login{grid-column:3;grid-row:2}.account-edit-row .row-save{grid-column:4;grid-row:2}.account-edit-row .row-delete{grid-column:5;grid-row:2}}
+@container (max-width:210px){.account-edit-row{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:24px 24px 24px 24px}.account-edit-row .task-avatar{display:none}.account-edit-row label:has(input[name="username"]){grid-column:1/4;grid-row:1}.account-edit-row label:has(input[name="password"]){grid-column:1/4;grid-row:2}.account-edit-row .row-enabled{grid-column:1/4;grid-row:3;justify-content:flex-start}.account-edit-row .row-login{grid-column:1;grid-row:4}.account-edit-row .row-save{grid-column:2;grid-row:4}.account-edit-row .row-delete{grid-column:3;grid-row:4}}
+
+.ledger-list .ledger-head .head-actions{gap:3px}.ledger-list .ledger-head .icon-add{width:24px;height:24px;font-size:14px;flex:0 0 auto}
+@media(max-width:600px){.ledger-list .ledger-head .icon-add{width:20px;height:20px;font-size:12px}.ledger-list .ledger-head h3{font-size:10px}.ledger-list .ledger-head{gap:2px}}

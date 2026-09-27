@@ -4,11 +4,13 @@ let configPath = '';
 
 let running = false;
 let readyProcess = false;
+let activeSingleAccountId = null;
 let taskStatuses = {};
 let selectedAccountId = null;
 let selectedDatacenter = null;
 let detailEditing = false;
 let discoveredDatacenters = [];
+let draggedDatacenter = null;
 let activities = [
   { icon: '✓', text: '环境探测完成，AT-SPI 后端可优先使用', time: '09:41:58' },
   { icon: '↗', text: '上一次批量任务已完成：3 个成功', time: '09:42:36' },
@@ -47,8 +49,7 @@ function showToast(message) {
 function renderTasks(statuses = {}) {
   const centerAccounts = accounts.filter(a => a.data_center === selectedDatacenter);
   const enabled = centerAccounts.filter(a => a.enabled);
-  $('#enabled-count').textContent = enabled.length;
-  $('#total-count').textContent = selectedDatacenter ? `${selectedDatacenter} · 共 ${centerAccounts.length} 个账号` : '请选择数据中心';
+  $('#enabled-count').textContent = `${enabled.length} 可登录`;
   $('#queue-count').textContent = enabled.length;
   $('#task-table').innerHTML = enabled.map((a, index) => {
     const status = statuses[a.id] || { label: '等待执行', type: '', phase: '尚未开始', progress: 0 };
@@ -67,9 +68,43 @@ function renderLedger() {
   if (selectedAccountId && !centerAccounts.some(account => account.id === selectedAccountId)) selectedAccountId = null;
   $('#ledger-datacenter-list').innerHTML = datacenters.map((center, index) => {
     const count = accounts.filter(account => account.data_center === center).length;
-    return `<div class="datacenter-item ${center === selectedDatacenter ? 'active' : ''}" data-datacenter="${escapeHtml(center)}"><div class="datacenter-icon">${String(index + 1).padStart(2, '0')}</div><div class="datacenter-copy"><strong>${escapeHtml(center)}</strong><small>${count} 个账号</small></div><button class="datacenter-delete" type="button" data-delete-datacenter="${escapeHtml(center)}" title="删除数据中心" aria-label="删除 ${escapeHtml(center)}">×</button></div>`;
+    return `<div class="datacenter-item ${center === selectedDatacenter ? 'active' : ''}" data-datacenter="${escapeHtml(center)}" draggable="true" title="拖动调整顺序"><div class="datacenter-icon">${String(index + 1).padStart(2, '0')}</div><div class="datacenter-copy"><strong>${escapeHtml(center)}</strong><small>${count} 个账号</small></div><button class="datacenter-delete" type="button" data-delete-datacenter="${escapeHtml(center)}" title="删除数据中心" aria-label="删除 ${escapeHtml(center)}">×</button></div>`;
   }).join('') || '<div class="empty">暂无数据中心</div>';
-  $$('[data-datacenter]').forEach(item => item.onclick = () => { selectedDatacenter = item.dataset.datacenter; selectedAccountId = null; detailEditing = false; taskStatuses = {}; renderLedger(); renderTasks(); });
+  $$('[data-datacenter]').forEach(item => {
+    item.onclick = () => { if (draggedDatacenter) return; selectedDatacenter = item.dataset.datacenter; selectedAccountId = null; detailEditing = false; taskStatuses = {}; renderLedger(); renderTasks(); };
+    item.ondragstart = event => {
+      if (event.target.closest('.datacenter-delete')) { event.preventDefault(); return; }
+      draggedDatacenter = item.dataset.datacenter;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedDatacenter);
+      item.classList.add('dragging');
+    };
+    item.ondragover = event => {
+      if (!draggedDatacenter || draggedDatacenter === item.dataset.datacenter) return;
+      event.preventDefault();
+      item.classList.toggle('drop-before', event.clientY < item.getBoundingClientRect().top + item.offsetHeight / 2);
+      item.classList.toggle('drop-after', event.clientY >= item.getBoundingClientRect().top + item.offsetHeight / 2);
+    };
+    item.ondragleave = () => item.classList.remove('drop-before', 'drop-after');
+    item.ondrop = async event => {
+      event.preventDefault();
+      const source = draggedDatacenter;
+      const target = item.dataset.datacenter;
+      const insertAfter = item.classList.contains('drop-after');
+      clearDatacenterDrag();
+      if (!source || source === target) return;
+      const previous = [...discoveredDatacenters];
+      const next = datacenters.filter(center => center !== source);
+      const index = next.indexOf(target);
+      next.splice(index + (insertAfter ? 1 : 0), 0, source);
+      discoveredDatacenters = next;
+      appConfig.ui.data_centers = next;
+      const result = await persistConfig();
+      if (!result.valid) { discoveredDatacenters = previous; appConfig.ui.data_centers = previous; return showToast(result.errors[0]); }
+      renderLedger();
+    };
+    item.ondragend = clearDatacenterDrag;
+  });
   $$('[data-delete-datacenter]').forEach(button => button.onclick = async event => {
     event.stopPropagation();
     const center = button.dataset.deleteDatacenter;
@@ -107,23 +142,30 @@ function renderLedger() {
     <label><span>账号</span><input name="username" value="${escapeHtml(account.username)}" required autocomplete="username" /></label>
     <label><span>密码</span><input name="password" type="password" autocomplete="new-password" placeholder="留空不修改" /></label>
     <label class="row-enabled" title="参与批量登录"><input name="enabled" type="checkbox" ${account.enabled ? 'checked' : ''} /><i></i><span>启用</span></label>
+    <button class="row-login" type="button" data-login-account="${escapeHtml(account.id)}" title="仅登录此账号">${account.id === activeSingleAccountId ? '■ 停止' : '▶ 登录'}</button>
     <button class="row-save" type="submit">保存</button>
     <button class="row-delete" type="button" data-delete-account="${escapeHtml(account.id)}">删除</button>
   </form>`).join('') || '<div class="empty">此数据中心暂无账号</div>';
   $$('[data-account-row]').forEach(form => form.onsubmit = saveAccountRow);
+  $$('[data-login-account]').forEach(button => button.onclick = () => runSingleAccount(button.dataset.loginAccount));
   $$('[data-delete-account]').forEach(button => button.onclick = () => deleteAccountRow(button.dataset.deleteAccount));
+}
+
+function clearDatacenterDrag() {
+  draggedDatacenter = null;
+  $$('.datacenter-item').forEach(item => item.classList.remove('dragging', 'drop-before', 'drop-after'));
 }
 
 async function saveAccountRow(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const account = accounts.find(item => item.id === form.dataset.accountRow);
-  if (!account) return;
+  if (!account) return false;
   const previous = { username: account.username, name: account.name, enabled: account.enabled };
   const data = new FormData(form);
   const username = String(data.get('username') || '').trim();
   const password = String(data.get('password') || '');
-  if (!username) return showToast('用户名不能为空');
+  if (!username) { showToast('用户名不能为空'); return false; }
   account.username = username;
   account.name = username;
   account.enabled = data.get('enabled') === 'on';
@@ -133,18 +175,51 @@ async function saveAccountRow(event) {
   if (!saved.valid) {
     Object.assign(account, previous);
     button.disabled = false; button.textContent = '保存';
-    return showToast(saved.errors[0]);
+    showToast(saved.errors[0]); return false;
   }
   if (password) {
     const stored = await window.easDesktop.storeCredential(account.id, password);
     form.elements.password.value = '';
     if (!stored.stored) {
       button.disabled = false; button.textContent = '保存';
-      return showToast('账号已保存，但 Keyring 密码写入失败');
+      showToast('账号已保存，但 Keyring 密码写入失败'); return false;
     }
   }
   renderAccounts(); renderCredentials(); renderTasks(); renderLedger();
   showToast(password ? '账号和密码已保存' : '账号已保存');
+  return true;
+}
+
+async function runSingleAccount(accountId) {
+  if (running) {
+    if (activeSingleAccountId === accountId) await stopActiveLogin();
+    else showToast('已有登录任务正在运行');
+    return;
+  }
+  const account = accounts.find(item => item.id === accountId);
+  if (!account) return showToast('账号不存在');
+  const form = [...$$('[data-account-row]')].find(item => item.dataset.accountRow === accountId);
+  if (form && (form.elements.username.value.trim() !== account.username || form.elements.password.value || form.elements.enabled.checked !== account.enabled)) {
+    const saved = await saveAccountRow({ preventDefault() {}, currentTarget: form });
+    if (!saved) return;
+  }
+  running = true;
+  activeSingleAccountId = accountId;
+  taskStatuses = { [accountId]: { label: '准备中', type: 'running', phase: '执行启动前检查', progress: 0 } };
+  renderLedger(); renderTasks(taskStatuses);
+  $('#run-button').innerHTML = '<span>■</span>安全停止';
+  addActivity(`${account.data_center} · ${account.username} 开始单个登录`, '▶');
+  try {
+    const result = await window.easDesktop.startAccountRun(accountId);
+    showToast(result.status === 'SUCCESS' ? '该账号登录成功' : result.message || '该账号登录失败，请查看日志');
+  } catch (error) {
+    addLog('WARN', `单个登录调用失败：${error.message}`);
+    showToast('单个登录失败，请查看日志');
+  } finally {
+    running = false; readyProcess = false; activeSingleAccountId = null;
+    $('#run-button').innerHTML = '<span>▶</span>批量登录';
+    renderLedger();
+  }
 }
 
 async function deleteAccountRow(accountId) {
@@ -287,16 +362,13 @@ function handleTaskEvent(event) {
   if (['START_CLIENT', 'WAIT_LOGIN_WINDOW', 'SUBMIT_LOGIN', 'SUCCESS', 'FAILED', 'STOPPED'].includes(event.stage)) addActivity(event.message || label, event.status === 'FAILED' ? '!' : event.status === 'SUCCESS' ? '✓' : '↗');
 }
 
+async function stopActiveLogin() {
+  const result = await window.easDesktop.stopRun();
+  showToast(result.stopped ? '已向当前任务发送安全停止信号' : '当前没有可停止的任务进程');
+}
+
 async function runFoundation() {
-  if (running || readyProcess) {
-    const result = await window.easDesktop.stopRun();
-    if (result.stopped) {
-      running = false; readyProcess = false;
-      $('#run-button').innerHTML = '<span>▶</span>批量登录';
-      showToast('已向本任务所属进程发送安全停止信号');
-    } else showToast('当前没有可停止的任务进程');
-    return;
-  }
+  if (running || readyProcess) return stopActiveLogin();
   if (!selectedDatacenter) return showToast('请先选择数据中心');
   const enabled = accounts.filter(a => a.enabled && a.data_center === selectedDatacenter);
   if (!enabled.length) return showToast('请先启用至少一个账号');
@@ -335,6 +407,7 @@ async function probeEnvironment() {
 }
 
 function goTo(page) {
+  document.body.classList.toggle('dashboard-view', page === 'dashboard');
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   $$('.page').forEach(p => p.classList.toggle('active', p.id === `${page}-page`));
   $('#page-title').textContent = pageMeta[page][0]; $('#page-subtitle').textContent = pageMeta[page][1];
@@ -352,35 +425,32 @@ $('#clear-activity').onclick = () => { activities = []; renderActivity(); };
 $('#clear-logs').onclick = () => { logs.length = 0; renderLogs(); };
 $('#theme-button').onclick = () => document.body.classList.toggle('dark');
 $('#settings-button').onclick = () => $('#settings-tabs').hidden ? goTo('settings') : goTo('dashboard');
+$('#dashboard-theme-button').onclick = () => $('#theme-button').click();
+$('#dashboard-settings-button').onclick = () => goTo('settings');
 $$('[data-settings-page]').forEach(button => button.onclick = () => goTo(button.dataset.settingsPage));
 
 function initializeColumnResizers() {
   const grid = $('.ledger-grid');
-  const saved = JSON.parse(localStorage.getItem('ledger-column-widths') || '{}');
-  if (Number.isFinite(saved.datacenter)) grid.style.setProperty('--datacenter-width', `${Math.min(280, Math.max(165, saved.datacenter))}px`);
-  if (Number.isFinite(saved.account)) grid.style.setProperty('--account-width', `${saved.account}px`);
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('ledger-column-widths') || '{}'); } catch { /* Ignore malformed old preference. */ }
+  if (Number.isFinite(saved.datacenter)) grid.style.setProperty('--datacenter-width', `${Math.min(280, Math.max(72, saved.datacenter))}px`);
   $$('[data-resizer]').forEach(handle => {
     handle.onpointerdown = event => {
       event.preventDefault();
       handle.setPointerCapture(event.pointerId);
       document.body.classList.add('resizing-columns');
       const first = $('.ledger-list');
-      const second = $('.ledger-detail');
       handle.onpointermove = moveEvent => {
         const gridRect = grid.getBoundingClientRect();
         if (handle.dataset.resizer === 'datacenter') {
-          const max = Math.max(220, gridRect.width - second.offsetWidth - 330);
-          grid.style.setProperty('--datacenter-width', `${Math.min(max, Math.max(180, moveEvent.clientX - gridRect.left))}px`);
-        } else {
-          const secondRect = second.getBoundingClientRect();
-          const max = Math.max(260, gridRect.right - secondRect.left - 290);
-          grid.style.setProperty('--account-width', `${Math.min(max, Math.max(240, moveEvent.clientX - secondRect.left))}px`);
+          const max = Math.max(72, gridRect.width - 124);
+          grid.style.setProperty('--datacenter-width', `${Math.min(max, Math.max(72, moveEvent.clientX - gridRect.left))}px`);
         }
       };
       handle.onpointerup = () => {
         handle.onpointermove = null;
         document.body.classList.remove('resizing-columns');
-        localStorage.setItem('ledger-column-widths', JSON.stringify({ datacenter: first.offsetWidth, account: second.offsetWidth }));
+        localStorage.setItem('ledger-column-widths', JSON.stringify({ datacenter: first.offsetWidth }));
       };
     };
   });
@@ -408,7 +478,7 @@ function openAccountModal() {
 
 $('#add-account').onclick = openAccountModal;
 $('#ledger-add-account').onclick = openAccountModal;
-$('#refresh-datacenters').onclick = async () => {
+async function refreshDatacenters() {
   const button = $('#refresh-datacenters');
   button.disabled = true; button.textContent = '…';
   $('#datacenter-source').textContent = '正在读取客户端目录…';
@@ -416,16 +486,44 @@ $('#refresh-datacenters').onclick = async () => {
   button.disabled = false; button.textContent = '↻';
   if (!result.ok) {
     $('#datacenter-source').textContent = '本地配置读取失败';
+    if (result.code === 'DATACENTER_CONFIG_NOT_FOUND') {
+      const names = window.prompt('此客户端目录未保存数据中心列表。请输入名称，多个用逗号分隔：', '');
+      if (!names) return showToast('未添加数据中心');
+      const entered = names.split(/[,，\n]/).map(name => name.trim()).filter(Boolean);
+      if (!entered.length) return showToast('数据中心名称不能为空');
+      discoveredDatacenters = [...new Set([...discoveredDatacenters, ...entered])];
+      appConfig.ui.data_centers = discoveredDatacenters;
+      const saved = await window.easDesktop.saveConfig(appConfig);
+      if (!saved.valid) return showToast(saved.errors[0]);
+      $('#datacenter-source').textContent = `手动添加 · ${discoveredDatacenters.length} 项`;
+      renderLedger(); renderTasks();
+      return showToast(`已添加 ${entered.length} 个数据中心`);
+    }
     return showToast(result.message || '数据中心读取失败');
   }
-  discoveredDatacenters = result.dataCenters;
+  discoveredDatacenters = [
+    ...discoveredDatacenters.filter(center => result.dataCenters.includes(center)),
+    ...result.dataCenters.filter(center => !discoveredDatacenters.includes(center))
+  ];
   appConfig.ui.data_centers = discoveredDatacenters;
-  await window.easDesktop.saveConfig(appConfig);
-  selectedDatacenter = discoveredDatacenters[0] || selectedDatacenter;
+  const saved = await window.easDesktop.saveConfig(appConfig);
+  if (!saved.valid) return showToast(saved.errors[0]);
+  if (!selectedDatacenter || !discoveredDatacenters.includes(selectedDatacenter)) selectedDatacenter = discoveredDatacenters[0] || null;
   selectedAccountId = null;
   $('#datacenter-source').textContent = `${result.windowBackend === 'install-directory' ? '安装目录' : '本地配置'} · ${discoveredDatacenters.length} 项`;
   renderLedger();
   showToast(`已获取 ${discoveredDatacenters.length} 个数据中心`);
+}
+$('#refresh-datacenters').onclick = refreshDatacenters;
+$('#choose-datacenter-directory').onclick = async () => {
+  const directory = await window.easDesktop.pickClientDirectory();
+  if (!directory) return showToast('请在桌面版选择 EAS 客户端目录');
+  const previous = appConfig.launcher.client_directory;
+  appConfig.launcher.client_directory = directory;
+  const saved = await window.easDesktop.saveConfig(appConfig);
+  if (!saved.valid) { appConfig.launcher.client_directory = previous; return showToast(saved.errors[0]); }
+  $('#client-directory').value = directory;
+  await refreshDatacenters();
 };
 $('#add-keyring-account').onclick = openAccountModal;
 $('#open-credential-modal').onclick = () => openCredentialModal();

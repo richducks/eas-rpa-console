@@ -28,6 +28,7 @@
     deleteCredential: async () => ({ deleted: true, code: 'WEB_NOT_PERSISTED' }),
     getPaths: async () => ({ userData: '浏览器本地存储', config: '浏览器本地存储', logs: '仅桌面版提供' }),
     startFoundationRun: async () => ({ status: 'FAILED', succeeded: 0, total: 0, message: '网页版不能控制本机 EAS，请使用 Windows 或 Ubuntu 桌面版' }),
+    startAccountRun: async () => ({ status: 'FAILED', succeeded: 0, total: 0, message: '网页版不能控制本机 EAS，请使用 Windows 或 Ubuntu 桌面版' }),
     stopRun: async () => ({ stopped: false, code: 'DESKTOP_REQUIRED' }),
     discoverDataCenters: async () => {
       const value = window.prompt('网页版无法读取本机 EAS。请输入数据中心名称；多个名称用逗号分隔：', '');
@@ -43,5 +44,7 @@
     document.body.classList.add('web-mode');
     const status = document.querySelector('.system-status span');
     if (status) status.textContent = '网页版 · 仅管理';
+    const dashboardStatus = document.querySelector('.ledger-foot .system-status span');
+    if (dashboardStatus) dashboardStatus.textContent = '网页版 · 仅管理';
   });
 })();

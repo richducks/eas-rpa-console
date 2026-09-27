@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const { resolveLaunchSpec } = require('./launcher');
+const { resolveLaunchSpec, resolveClientDirectory } = require('./launcher');
+const { parseDesktopFile } = require('./desktop-file');
 
 function decodeXml(value) {
   return String(value || '').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -28,13 +29,15 @@ function installationRoot(spec) {
 }
 
 async function discoverDataCenters(config) {
-  const spec = resolveLaunchSpec(config);
-  const root = installationRoot(spec);
   const configured = config.launcher?.client_directory;
-  const clientDirectory = configured
-    ? path.resolve(spec.workingDirectory, configured)
-    : path.join(root, 'client');
+  const spec = configured ? null : resolveLaunchSpec(config);
+  const root = spec ? installationRoot(spec) : null;
+  const launcher = config.launcher || {};
+  const desktopBase = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file).workingDirectory : process.cwd();
+  const clientDirectory = configured ? resolveClientDirectory(config, launcher.working_directory || desktopBase) : path.join(root, 'client');
   if (!fs.existsSync(clientDirectory) || !fs.statSync(clientDirectory).isDirectory()) throw Object.assign(new Error(`EAS 客户端目录不存在：${clientDirectory}`), { code: 'CLIENT_DIRECTORY_NOT_FOUND' });
+  const markers = ['bin/client.sh', 'bin/client.bat', 'deploy/client/config.xml', 'deploy/client/datacenters.xml'];
+  if (!markers.some(marker => fs.existsSync(path.join(clientDirectory, marker)))) throw Object.assign(new Error('所选目录不是 EAS 客户端目录，请选择含 bin 或 deploy 的目录'), { code: 'CLIENT_DIRECTORY_INVALID' });
   const candidates = [path.join(clientDirectory, 'deploy', 'client', 'datacenters.xml'), path.join(clientDirectory, 'datacenters.xml')];
   const files = [...new Set(candidates)].filter(file => fs.existsSync(file) && fs.statSync(file).isFile());
   const installed = files.flatMap(file => parseDataCenterXml(fs.readFileSync(file, 'utf8')));

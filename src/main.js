@@ -18,7 +18,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 960,
     height: 680,
-    minWidth: 360,
+    minWidth: 280,
     minHeight: 280,
     resizable: true,
     title: 'EAS 自动登录中心',
@@ -152,6 +152,15 @@ app.whenReady().then(() => {
     const succeeded = results.filter(result => result.status === 'SUCCESS').length;
     return { status: succeeded === enabled.length ? 'SUCCESS' : succeeded ? 'PARTIAL' : 'FAILED', succeeded, total: enabled.length, results };
   });
+  ipcMain.handle('task:start-account', async (_event, accountId) => {
+    const config = configStore.load();
+    const account = typeof accountId === 'string' ? config.accounts.find(item => item.id === accountId) : null;
+    if (!account) return { status: 'FAILED', succeeded: 0, total: 0, message: '账号不存在' };
+    const accountConfig = JSON.parse(JSON.stringify(config));
+    accountConfig.accounts.forEach(item => { item.enabled = item.id === account.id; });
+    const result = await runner.run(accountConfig);
+    return { status: result.status, succeeded: result.status === 'SUCCESS' ? 1 : 0, total: 1, message: result.message, results: [result] };
+  });
   ipcMain.handle('task:stop', () => runner.stop());
   ipcMain.handle('datacenters:discover', async () => {
     try {
@@ -176,7 +185,7 @@ app.whenReady().then(() => {
     return result.canceled ? null : result.filePaths[0];
   });
   ipcMain.handle('client-directory:pick', async () => {
-    const result = await dialog.showOpenDialog({ title: '选择 EAS 客户端目录', properties: ['openDirectory'] });
+    const result = await dialog.showOpenDialog({ title: '选择 EAS 根目录或 client 目录', properties: ['openDirectory'] });
     return result.canceled ? null : result.filePaths[0];
   });
 

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('easDesktop', {
   deleteCredential: (accountId) => ipcRenderer.invoke('credentials:delete', accountId),
   getPaths: () => ipcRenderer.invoke('app:paths'),
   startFoundationRun: (dataCenter) => ipcRenderer.invoke('task:start-foundation', dataCenter),
+  startAccountRun: (accountId) => ipcRenderer.invoke('task:start-account', accountId),
   stopRun: () => ipcRenderer.invoke('task:stop'),
   discoverDataCenters: () => ipcRenderer.invoke('datacenters:discover'),
   onTaskEvent: (listener) => {

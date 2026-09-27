@@ -70,10 +70,14 @@ function validateConfig(config, options = {}) {
   const desktopFile = config.launcher?.desktop_file;
   const command = config.launcher?.command;
   const clientDirectory = config.launcher?.client_directory;
-  if (!desktopFile && !command) errors.push('launcher.desktop_file 与 launcher.command 至少填写一项');
-  if (options.checkPaths && desktopFile && !command && !fs.existsSync(desktopFile)) errors.push(`启动器文件不存在：${desktopFile}`);
+  if (!desktopFile && !command && !clientDirectory) errors.push('请指定 Desktop 启动器、启动命令或 EAS 客户端目录');
+  if (options.checkPaths && desktopFile && !command && !clientDirectory && !fs.existsSync(desktopFile)) errors.push(`启动器文件不存在：${desktopFile}`);
   if (clientDirectory != null && (typeof clientDirectory !== 'string' || !clientDirectory.trim())) errors.push('launcher.client_directory 必须为空或有效路径');
-  if (options.checkPaths && clientDirectory && !fs.existsSync(clientDirectory)) errors.push(`EAS 客户端目录不存在：${clientDirectory}`);
+  if (options.checkPaths && clientDirectory) {
+    const base = config.launcher?.working_directory || (desktopFile && fs.existsSync(desktopFile) ? require('./desktop-file').parseDesktopFile(desktopFile).workingDirectory : process.cwd());
+    const resolvedDirectory = require('./launcher').resolveClientDirectory(config, base);
+    if (!fs.existsSync(resolvedDirectory)) errors.push(`EAS 客户端目录不存在：${resolvedDirectory}`);
+  }
   return { valid: errors.length === 0, errors };
 }
 

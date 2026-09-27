@@ -7,7 +7,7 @@
     <title>EAS 自动登录中心</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="dashboard-view">
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -24,7 +24,7 @@
 
         <div class="sidebar-foot">
           <div class="security-note"><span>✓</span><div><strong>凭据安全</strong><small>密码仅从系统 Keyring 读取</small></div></div>
-          <div class="version">EAS RPA Console <span>v0.18.0</span></div>
+          <div class="version">EAS RPA Console <span>v0.19.0</span></div>
         </div>
       </aside>
 
@@ -41,15 +41,15 @@
         <div class="settings-tabs" id="settings-tabs" hidden><button data-settings-page="settings">常规设置</button><button data-settings-page="environment">环境检测</button><button data-settings-page="logs">运行日志</button></div>
 
         <section class="content page active" id="dashboard-page">
-          <div class="ledger-toolbar"><div><strong><span id="enabled-count">0</span> 个账号参与登录</strong><small id="total-count">共 0 个账号</small></div><button class="primary-btn batch-login-btn" id="run-button"><span>▶</span>批量登录</button></div>
           <div class="ledger-grid">
             <section class="ledger-column ledger-list panel">
-              <div class="ledger-head"><div><h3>数据中心</h3><p id="datacenter-source">从 EAS 安装目录读取</p></div><button class="icon-add" id="refresh-datacenters" title="从安装目录刷新">↻</button></div>
+              <div class="ledger-head"><div><h3>数据中心</h3><p id="datacenter-source">从客户端目录读取</p></div><div class="head-actions"><button class="icon-add" id="choose-datacenter-directory" title="选择 EAS 客户端目录" aria-label="选择 EAS 客户端目录">▣</button><button class="icon-add" id="refresh-datacenters" title="刷新数据中心" aria-label="刷新数据中心">↻</button></div></div>
               <div id="ledger-datacenter-list"></div>
+              <div class="ledger-foot"><div class="system-status" title="系统状态"><i></i><span>系统就绪</span></div><div class="ledger-foot-actions"><button class="icon-btn" id="dashboard-theme-button" title="切换明暗主题" aria-label="切换明暗主题">◐</button><button class="icon-btn" id="dashboard-settings-button" title="系统设置" aria-label="系统设置">⚙</button></div></div>
             </section>
             <div class="column-resizer" data-resizer="datacenter" title="拖动调整栏宽"></div>
             <section class="ledger-column ledger-detail panel">
-              <div class="ledger-head"><div><h3>账号簿</h3><p id="account-book-subtitle">选择数据中心查看账号</p></div><div class="head-actions"><span class="queue-count" id="account-book-count">0</span><button class="icon-add" id="ledger-add-account">＋</button></div></div>
+              <div class="ledger-head"><div class="ledger-title"><h3>账号簿</h3><p id="account-book-subtitle">选择数据中心查看账号</p></div><div class="head-actions"><span class="queue-count" id="account-book-count">0</span><span id="enabled-count" class="enabled-count" title="参与登录账号数">0 可登录</span><button class="icon-add" id="ledger-add-account" title="添加账号" aria-label="添加账号">＋</button><button class="primary-btn batch-login-btn" id="run-button"><span>▶</span>批量登录</button></div></div>
               <div id="ledger-account-book"></div>
             </section>
           </div>
