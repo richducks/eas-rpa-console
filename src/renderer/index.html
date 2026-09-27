@@ -24,7 +24,7 @@
 
         <div class="sidebar-foot">
           <div class="security-note"><span>✓</span><div><strong>凭据安全</strong><small>密码仅从系统 Keyring 读取</small></div></div>
-          <div class="version">EAS RPA Console <span>v0.15.0</span></div>
+          <div class="version">EAS RPA Console <span>v0.16.0</span></div>
         </div>
       </aside>
 
@@ -52,12 +52,12 @@
               <div class="ledger-head"><div><h3>账号簿</h3><p id="account-book-subtitle">选择数据中心查看账号</p></div><div class="head-actions"><span class="queue-count" id="account-book-count">0</span><button class="icon-add" id="ledger-add-account">＋</button></div></div>
               <div id="ledger-account-book"></div>
               <div class="inline-account-detail" id="account-detail-inline" hidden>
-                <div class="inline-detail-head"><div><strong>账号详情</strong><small>密码由系统 Keyring 保护</small></div><button class="secondary-btn compact-btn" id="detail-edit" type="button">编辑</button></div>
+                <div class="inline-detail-head"><div><strong>账号详情</strong><small>密码由系统 Keyring 保护</small></div><button class="secondary-btn compact-btn" id="detail-edit" type="button" hidden>编辑</button></div>
                 <form id="ledger-detail-form" class="ledger-form">
                   <label>用户名<input id="detail-username" required disabled /></label>
                   <label>密码<input id="detail-password" type="password" autocomplete="new-password" placeholder="已由 Keyring 保护" disabled /></label>
                   <label class="switch-row compact"><span><strong>参与批量登录</strong><small>关闭后本次跳过</small></span><input id="detail-enabled" type="checkbox" /><i></i></label>
-                  <div class="detail-actions"><button class="danger-btn" id="detail-delete" type="button">删除</button><button class="secondary-btn" id="detail-cancel" type="button" hidden>取消</button><button class="primary-btn" id="detail-save" type="submit" hidden>保存</button></div>
+                  <div class="detail-actions"><button class="danger-btn" id="detail-delete" type="button">删除</button><button class="secondary-btn" id="detail-cancel" type="button" hidden>取消</button><button class="primary-btn" id="detail-save" type="submit">保存</button></div>
                 </form>
                 <div class="inline-detail-foot"><span>密码由系统 Keyring 提供</span><button class="text-btn" id="detect-button">环境检查</button></div>
               </div>

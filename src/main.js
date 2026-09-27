@@ -16,10 +16,11 @@ let runner;
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 1120,
-    minHeight: 720,
+    width: 960,
+    height: 680,
+    minWidth: 720,
+    minHeight: 520,
+    resizable: true,
     title: 'EAS 自动登录中心',
     backgroundColor: '#f4f7fb',
     autoHideMenuBar: true,

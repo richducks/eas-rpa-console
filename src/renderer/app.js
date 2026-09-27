@@ -104,7 +104,12 @@ function renderLedger() {
   const inlineDetail = $('#account-detail-inline');
   const accountBook = $('#ledger-account-book');
   accountBook.innerHTML = centerAccounts.map((account, index) => `<div class="ledger-account ${account.id === selectedAccountId ? 'active' : ''}" data-ledger-account="${escapeHtml(account.id)}"><div class="task-avatar">${String(index + 1).padStart(2, '0')}</div><div><strong>${escapeHtml(account.name || account.id)}</strong><small>${escapeHtml(account.username)}</small></div><i class="status-dot ${account.enabled ? 'on' : ''}"></i><span class="account-chevron">⌄</span></div>`).join('') || '<div class="empty">此数据中心暂无账号</div>';
-  $$('[data-ledger-account]').forEach(item => item.onclick = () => { selectedAccountId = selectedAccountId === item.dataset.ledgerAccount ? null : item.dataset.ledgerAccount; detailEditing = false; renderLedger(); });
+  $$('[data-ledger-account]').forEach(item => item.onclick = () => {
+    const collapsing = selectedAccountId === item.dataset.ledgerAccount;
+    selectedAccountId = collapsing ? null : item.dataset.ledgerAccount;
+    detailEditing = !collapsing;
+    renderLedger();
+  });
   const account = accounts.find(item => item.id === selectedAccountId);
   inlineDetail.hidden = !account;
   if (account) accountBook.querySelector(`[data-ledger-account="${CSS.escape(account.id)}"]`)?.after(inlineDetail);
@@ -323,7 +328,7 @@ $$('[data-settings-page]').forEach(button => button.onclick = () => goTo(button.
 function initializeColumnResizers() {
   const grid = $('.ledger-grid');
   const saved = JSON.parse(localStorage.getItem('ledger-column-widths') || '{}');
-  if (Number.isFinite(saved.datacenter)) grid.style.setProperty('--datacenter-width', `${saved.datacenter}px`);
+  if (Number.isFinite(saved.datacenter)) grid.style.setProperty('--datacenter-width', `${Math.min(280, Math.max(165, saved.datacenter))}px`);
   if (Number.isFinite(saved.account)) grid.style.setProperty('--account-width', `${saved.account}px`);
   $$('[data-resizer]').forEach(handle => {
     handle.onpointerdown = event => {
