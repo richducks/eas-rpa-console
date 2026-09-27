@@ -64,7 +64,7 @@ function renderLedger() {
   const datacenters = [...new Set([...discoveredDatacenters, ...accounts.map(account => account.data_center)].filter(Boolean))];
   if (!selectedDatacenter || !datacenters.includes(selectedDatacenter)) selectedDatacenter = datacenters[0] || null;
   const centerAccounts = accounts.filter(account => account.data_center === selectedDatacenter);
-  if (!selectedAccountId || !centerAccounts.some(account => account.id === selectedAccountId)) selectedAccountId = centerAccounts[0]?.id || null;
+  if (selectedAccountId && !centerAccounts.some(account => account.id === selectedAccountId)) selectedAccountId = null;
   $('#ledger-datacenter-list').innerHTML = datacenters.map((center, index) => {
     const count = accounts.filter(account => account.data_center === center).length;
     return `<div class="datacenter-item ${center === selectedDatacenter ? 'active' : ''}" data-datacenter="${escapeHtml(center)}"><div class="datacenter-icon">${String(index + 1).padStart(2, '0')}</div><div class="datacenter-copy"><strong>${escapeHtml(center)}</strong><small>${count} 个账号</small></div><button class="datacenter-delete" type="button" data-delete-datacenter="${escapeHtml(center)}" title="删除数据中心" aria-label="删除 ${escapeHtml(center)}">×</button></div>`;
@@ -101,9 +101,14 @@ function renderLedger() {
   });
   $('#account-book-subtitle').textContent = selectedDatacenter || '选择数据中心查看账号';
   $('#account-book-count').textContent = centerAccounts.length;
-  $('#ledger-account-book').innerHTML = centerAccounts.map((account, index) => `<div class="ledger-account ${account.id === selectedAccountId ? 'active' : ''}" data-ledger-account="${escapeHtml(account.id)}"><div class="task-avatar">${String(index + 1).padStart(2, '0')}</div><div><strong>${escapeHtml(account.name || account.id)}</strong><small>${escapeHtml(account.username)}</small></div><i class="status-dot ${account.enabled ? 'on' : ''}"></i></div>`).join('') || '<div class="empty">此数据中心暂无账号</div>';
-  $$('[data-ledger-account]').forEach(item => item.onclick = () => { selectedAccountId = item.dataset.ledgerAccount; detailEditing = false; renderLedger(); });
+  const inlineDetail = $('#account-detail-inline');
+  const accountBook = $('#ledger-account-book');
+  accountBook.innerHTML = centerAccounts.map((account, index) => `<div class="ledger-account ${account.id === selectedAccountId ? 'active' : ''}" data-ledger-account="${escapeHtml(account.id)}"><div class="task-avatar">${String(index + 1).padStart(2, '0')}</div><div><strong>${escapeHtml(account.name || account.id)}</strong><small>${escapeHtml(account.username)}</small></div><i class="status-dot ${account.enabled ? 'on' : ''}"></i><span class="account-chevron">⌄</span></div>`).join('') || '<div class="empty">此数据中心暂无账号</div>';
+  $$('[data-ledger-account]').forEach(item => item.onclick = () => { selectedAccountId = selectedAccountId === item.dataset.ledgerAccount ? null : item.dataset.ledgerAccount; detailEditing = false; renderLedger(); });
   const account = accounts.find(item => item.id === selectedAccountId);
+  inlineDetail.hidden = !account;
+  if (account) accountBook.querySelector(`[data-ledger-account="${CSS.escape(account.id)}"]`)?.after(inlineDetail);
+  else accountBook.after(inlineDetail);
   const form = $('#ledger-detail-form');
   ['#detail-username', '#detail-password', '#detail-enabled'].forEach(selector => { $(selector).disabled = !account || !detailEditing; });
   $('#detail-edit').disabled = !account;
