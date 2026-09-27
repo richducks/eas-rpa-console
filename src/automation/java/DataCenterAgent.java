@@ -65,9 +65,23 @@ public final class DataCenterAgent {
             List<AbstractButton> buttons = new ArrayList<AbstractButton>();
             for (Window window : Window.getWindows()) if (window.isShowing()) collectLogin(window, combos, fields, buttons);
             JComboBox<?> targetCombo = null;
-            for (JComboBox<?> combo : combos) for (int i = 0; i < combo.getItemCount(); i++) if (dataCenter.equals(String.valueOf(combo.getItemAt(i)))) targetCombo = combo;
+            int targetIndex = -1;
+            Object targetItem = null;
+            for (JComboBox<?> combo : combos) {
+                for (int i = 0; i < combo.getItemCount(); i++) {
+                    Object item = combo.getItemAt(i);
+                    if (dataCenter.equals(String.valueOf(item))) {
+                        targetCombo = combo;
+                        targetIndex = i;
+                        targetItem = item;
+                        break;
+                    }
+                }
+                if (targetCombo != null) break;
+            }
             if (targetCombo == null) { writeError(outputPath, "DATACENTER_NOT_FOUND"); return; }
-            targetCombo.setSelectedItem(dataCenter);
+            targetCombo.setSelectedIndex(targetIndex);
+            targetCombo.setSelectedItem(targetItem);
             if (!dataCenter.equals(String.valueOf(targetCombo.getSelectedItem()))) { writeError(outputPath, "DATACENTER_VERIFY_FAILED"); return; }
             JTextField usernameField = null;
             JPasswordField passwordField = null;

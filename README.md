@@ -1,6 +1,6 @@
 # EAS 自动登录中心
 
-当前版本为 **0.13.0**。这是根据 `eascloud-ubuntu-rpa` Skill 开发的 Electron 控制台，用于 EAS Cloud 多账号任务、运行环境检测、Keyring 凭据管理和安全的客户端启动。
+当前版本为 **0.20.0**。这是根据 `eascloud-ubuntu-rpa` Skill 开发的 Electron 控制台，用于 EAS Cloud 多账号任务、运行环境检测、Keyring 凭据管理和安全的客户端启动。
 
 ![EAS 自动登录中心界面](docs/screenshots/latest-ui.png)
 
@@ -14,11 +14,15 @@
 | `build` | 图标、Java 辅助工具和构建资源 |
 | `skill/eascloud-ubuntu-rpa` | EAS Cloud Ubuntu RPA Skill |
 | `docs/screenshots` | 当前界面截图 |
-| `dist` | 仅保留最新版本的发布成品 |
+| `dist` | 构建产物；仅分发已验证的对应平台版本 |
 
 ## 发布包与个人配置
 
 公开仓库不包含 `dist/`、`node_modules/`、运行日志、`config.yaml` 或真实凭据。使用者执行 `npm ci` 后可按下方命令自行构建。复制 `config.example.yaml` 为本机配置，并在界面或系统 Keyring 中录入自己的账号和密码。
+
+Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入 Linux 二进制文件。macOS 的 DMG 还需要在 macOS 上制作并签名/公证，才能避免 Gatekeeper 阻拦。当前自动登录的窗口控制也主要面向 Ubuntu，Windows/macOS 自动登录尚未完成适配与实机验证。
+
+AppImage 可直接双击运行。如当前系统未启用 FUSE，建议安装 `.deb` 包。
 
 ## 开发与构建
 
@@ -30,10 +34,13 @@ npm start
 ```bash
 npm run build:linux
 npm run build:windows
+npm run build:mac
 npm run build:web
 ```
 
-构建过程会重新生成展开目录和中间文件；对外保存时仍应只保留最新版本的发布包。
+请在目标操作系统分别执行对应命令；构建脚本会拒绝在错误系统上交叉打包。分别使用 x64 Windows、x64/Apple Silicon macOS 主机，并检查包内 `keytar.node` 的平台格式，再在该系统实机安装验证。分发 macOS 版本前还需要 Apple Developer ID 签名与公证。
+
+构建过程会重新生成展开目录和中间文件；请勿将 `dist/unverified-cross-builds` 中的旧交叉构建文件发给别人。
 
 ## 当前能力
 

@@ -1,6 +1,6 @@
 {
   "name": "eascloud-rpa-console",
-  "version": "0.13.0",
+  "version": "0.20.0",
   "private": true,
   "description": "EAS Cloud multi-account RPA desktop console",
   "author": {
@@ -12,8 +12,9 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build:linux": "electron-builder --linux AppImage deb dir --x64",
-    "build:windows": "electron-builder --win nsis --x64",
+    "build:linux": "node scripts/require-host.js linux && electron-builder --linux AppImage deb dir --x64",
+    "build:windows": "node scripts/require-host.js win32 && electron-builder --win nsis --x64",
+    "build:mac": "node scripts/require-host.js darwin && electron-builder --mac dmg --x64 --arm64",
     "build:web": "node scripts/build-web.js",
     "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer/app.js && node --check src/core/config.js && node --check src/core/environment.js && node --check src/core/runner.js && node --check src/core/windows.js",
     "test": "node --test"

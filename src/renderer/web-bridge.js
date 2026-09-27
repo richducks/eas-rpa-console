@@ -4,7 +4,7 @@
   const storageKey = 'eas-rpa-web-config';
   const defaultConfig = {
     global: { startup_timeout_seconds: 120, login_timeout_seconds: 60, poll_interval_seconds: 0.5, retry_count: 1, continue_on_error: true, screenshot_on_failure: false, max_instances: null },
-    launcher: { desktop_file: '', command: null, working_directory: null },
+    launcher: { desktop_file: '', command: null, working_directory: null, client_directory: null },
     ui: { login_window_title: '金蝶EAS Cloud系统登录', success_window_title: null, backend_order: ['atspi', 'keyboard', 'image'], template_directory: 'templates', data_centers: [] },
     accounts: []
   };
@@ -28,6 +28,7 @@
     deleteCredential: async () => ({ deleted: true, code: 'WEB_NOT_PERSISTED' }),
     getPaths: async () => ({ userData: '浏览器本地存储', config: '浏览器本地存储', logs: '仅桌面版提供' }),
     startFoundationRun: async () => ({ status: 'FAILED', succeeded: 0, total: 0, message: '网页版不能控制本机 EAS，请使用 Windows 或 Ubuntu 桌面版' }),
+    startAccountRun: async () => ({ status: 'FAILED', succeeded: 0, total: 0, message: '网页版不能控制本机 EAS，请使用 Windows 或 Ubuntu 桌面版' }),
     stopRun: async () => ({ stopped: false, code: 'DESKTOP_REQUIRED' }),
     discoverDataCenters: async () => {
       const value = window.prompt('网页版无法读取本机 EAS。请输入数据中心名称；多个名称用逗号分隔：', '');
@@ -35,12 +36,15 @@
       return dataCenters.length ? { ok: true, dataCenters, windowBackend: 'manual-web' } : { ok: false, code: 'WEB_MANUAL_CANCELLED', message: '未添加数据中心' };
     },
     onTaskEvent: () => () => {},
-    pickLauncher: async () => null
+    pickLauncher: async () => null,
+    pickClientDirectory: async () => null
   };
 
   document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.add('web-mode');
     const status = document.querySelector('.system-status span');
     if (status) status.textContent = '网页版 · 仅管理';
+    const dashboardStatus = document.querySelector('.ledger-foot .system-status span');
+    if (dashboardStatus) dashboardStatus.textContent = '网页版 · 仅管理';
   });
 })();

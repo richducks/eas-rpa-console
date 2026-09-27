@@ -1,53 +1,51 @@
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
-const { resolveLaunchSpec } = require('./launcher');
-const { probeEnvironment } = require('./environment');
-const { waitForLoginWindow } = require('./windows');
-const { ProcessManager } = require('./process-manager');
+const { resolveLaunchSpec, resolveClientDirectory } = require('./launcher');
+const { parseDesktopFile } = require('./desktop-file');
 
-const execFileAsync = promisify(execFile);
-
-async function discoverDataCenters(config, options = {}) {
-  const environment = await probeEnvironment(config);
-  const spec = resolveLaunchSpec(config);
-  const manager = new ProcessManager();
-  const runId = `discover-${Date.now().toString(36)}`;
-  const record = manager.launch(spec, { runId, accountId: 'datacenter-discovery' });
-  let javaRecord = null;
-  let temporaryDirectory = null;
-  try {
-    await manager.waitUntilAlive(record, 3000);
-    const javaProcess = await manager.waitForDescendant(record.pid, row => /\/java(?:\s|$)/.test(row.command) && row.command.includes('com.kingdee.eas'), 15000);
-    javaRecord = manager.registerOwnedPid(javaProcess.pid, { runId, accountId: 'datacenter-discovery' });
-    const window = await waitForLoginWindow({
-      pid: javaRecord.pid,
-      title: config.ui.login_window_title,
-      sessionType: environment.session.type,
-      tools: environment.tools,
-      timeoutMs: config.global.startup_timeout_seconds * 1000,
-      pollIntervalMs: config.global.poll_interval_seconds * 1000,
-      isProcessAlive: () => manager.isAlive(javaRecord.pid)
-    });
-    temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'eas-rpa-dc-'));
-    const outputPath = path.join(temporaryDirectory, 'datacenters.txt');
-    const javaHome = path.resolve(spec.workingDirectory, '..', '..', 'clientjdk');
-    const javaBinary = path.join(javaHome, 'bin', 'java');
-    const toolsJar = path.join(javaHome, 'lib', 'tools.jar');
-    const helperJar = options.helperJar;
-    const agentJar = options.agentJar;
-    await execFileAsync(javaBinary, ['-cp', `${helperJar}:${toolsJar}`, 'easrpa.AttachHelper', String(javaRecord.pid), agentJar, outputPath], { timeout: 15000, maxBuffer: 64 * 1024 });
-    const lines = fs.readFileSync(outputPath, 'utf8').split(/\r?\n/).filter(Boolean);
-    if (!lines.length || lines[0].startsWith('ERROR:')) throw Object.assign(new Error('未能从 EAS 组合框读取数据中心'), { code: lines[0]?.slice(6) || 'DATACENTER_OPTIONS_EMPTY' });
-    const dataCenters = [...new Set(lines.map(line => Buffer.from(line, 'base64').toString('utf8')).filter(Boolean))];
-    return { dataCenters, pid: javaRecord.pid, windowBackend: window.backend };
-  } finally {
-    if (javaRecord) manager.stopOwned(javaRecord.pid, runId);
-    manager.stopOwned(record.pid, runId);
-    if (temporaryDirectory) fs.rmSync(temporaryDirectory, { recursive: true, force: true });
-  }
+function decodeXml(value) {
+  return String(value || '').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
-module.exports = { discoverDataCenters };
+function parseDataCenterXml(xml) {
+  const names = [];
+  const add = value => {
+    const name = decodeXml(value).trim();
+    if (name && !names.includes(name)) names.push(name);
+  };
+  for (const tag of xml.matchAll(/<(?:datacenter|data-center|dc)\b([^>]*)>/gi)) {
+    const match = tag[1].match(/\b(?:displayName|display-name|name|title|label)\s*=\s*["']([^"']+)["']/i);
+    if (match) add(match[1]);
+  }
+  for (const attribute of xml.matchAll(/<attribute\b[^>]*\bkey\s*=\s*["'](?:name|displayName|display-name|title|label)["'][^>]*\bvalue\s*=\s*["']([^"']+)["'][^>]*>/gi)) add(attribute[1]);
+  return names;
+}
+
+function installationRoot(spec) {
+  const workingDirectory = path.resolve(spec.workingDirectory || process.cwd());
+  return path.basename(workingDirectory) === 'bin' && path.basename(path.dirname(workingDirectory)) === 'client'
+    ? path.dirname(path.dirname(workingDirectory))
+    : workingDirectory;
+}
+
+async function discoverDataCenters(config) {
+  const configured = config.launcher?.client_directory;
+  const spec = configured ? null : resolveLaunchSpec(config);
+  const root = spec ? installationRoot(spec) : null;
+  const launcher = config.launcher || {};
+  const desktopBase = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file).workingDirectory : process.cwd();
+  const clientDirectory = configured ? resolveClientDirectory(config, launcher.working_directory || desktopBase) : path.join(root, 'client');
+  if (!fs.existsSync(clientDirectory) || !fs.statSync(clientDirectory).isDirectory()) throw Object.assign(new Error(`EAS 客户端目录不存在：${clientDirectory}`), { code: 'CLIENT_DIRECTORY_NOT_FOUND' });
+  const markers = ['bin/client.sh', 'bin/client.bat', 'deploy/client/config.xml', 'deploy/client/datacenters.xml'];
+  if (!markers.some(marker => fs.existsSync(path.join(clientDirectory, marker)))) throw Object.assign(new Error('所选目录不是 EAS 客户端目录，请选择含 bin 或 deploy 的目录'), { code: 'CLIENT_DIRECTORY_INVALID' });
+  const candidates = [path.join(clientDirectory, 'deploy', 'client', 'datacenters.xml'), path.join(clientDirectory, 'datacenters.xml')];
+  const files = [...new Set(candidates)].filter(file => fs.existsSync(file) && fs.statSync(file).isFile());
+  const installed = files.flatMap(file => parseDataCenterXml(fs.readFileSync(file, 'utf8')));
+  const saved = Array.isArray(config.ui?.data_centers) ? config.ui.data_centers : [];
+  const accountCenters = Array.isArray(config.accounts) ? config.accounts.map(account => account.data_center) : [];
+  const dataCenters = [...new Set([...installed, ...saved, ...accountCenters].map(value => String(value || '').trim()).filter(Boolean))];
+  if (!dataCenters.length) throw Object.assign(new Error('安装目录中尚无数据中心配置，请确认 EAS 客户端已完成初始化'), { code: 'DATACENTER_CONFIG_NOT_FOUND' });
+  return { dataCenters, windowBackend: files.length ? 'install-directory' : 'local-saved-config', clientDirectory, sourceFiles: files.map(file => path.relative(clientDirectory, file)) };
+}
+
+module.exports = { discoverDataCenters, parseDataCenterXml };
