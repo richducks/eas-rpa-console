@@ -72,6 +72,7 @@ function createWindow() {
     win.webContents.once('did-finish-load', async () => {
       await new Promise(resolve => setTimeout(resolve, 800));
       if (process.env.EAS_RPA_SCREENSHOT_PAGE === 'credentials') await win.webContents.executeJavaScript("goTo('credentials')");
+      if (process.env.EAS_RPA_SCREENSHOT_THEME === 'dark') await win.webContents.executeJavaScript("document.body.classList.add('dark')");
       await new Promise(resolve => setTimeout(resolve, 200));
       const image = await win.webContents.capturePage();
       fs.writeFileSync(process.env.EAS_RPA_SCREENSHOT, image.toPNG());
