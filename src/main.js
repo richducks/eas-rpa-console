@@ -54,7 +54,7 @@ function createWindow() {
     minHeight: 280,
     resizable: true,
     title: 'EAS 自动登录中心',
-    backgroundColor: '#f4f7fb',
+    backgroundColor: '#eef1f5',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
