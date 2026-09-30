@@ -19,7 +19,7 @@ function walk(directory) {
   }
 }
 walk(path.join(root, 'src'));
-const platformReads = jsFiles.filter(file => fs.readFileSync(file, 'utf8').includes('process.platform')).map(file => path.relative(root, file));
+const platformReads = jsFiles.filter(file => fs.readFileSync(file, 'utf8').includes('process.platform')).map(file => path.relative(root, file).split(path.sep).join('/'));
 assert.deepEqual(platformReads, ['src/platform/index.js'], 'process.platform 只能出现在平台入口');
 
 const { DEFAULT_CONFIG } = require(path.join(root, 'src/core/config'));
