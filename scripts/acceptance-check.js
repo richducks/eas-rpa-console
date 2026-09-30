@@ -61,11 +61,20 @@ assert.ok(css.includes('overflow-x:hidden'), '页面必须显式禁止整窗横�
 assert.ok(css.includes('.app-shell{width:100%;min-width:0;min-height:100vh'), '应用背景必须覆盖完整视口，避免窗口放大后露出底色');
 assert.ok(css.includes('@media(max-width:720px)'), '窄窗口必须具备单列响应式断点');
 assert.ok(css.includes('.workspace{grid-template-columns:1fr;min-height:0}'), '窄窗口工作区必须从双栏重排为单栏');
+assert.ok(css.includes('main{width:100%;max-width:none'), '大窗口主内容必须跟随视口流式扩展，不能再设置固定最大内容宽度');
+assert.ok(css.includes('min-height:max(470px,calc(100vh - 330px))'), '大窗口工作区必须随视口高度扩展，减少底部空黑区');
+assert.ok(css.includes('@media(min-width:1400px)'), '超宽窗口必须有独立的布局扩展规则');
 
 const mainProcess = read('src/main.js');
 assert.ok(mainProcess.includes('const MIN_WINDOW_WIDTH = 420;'), '桌面窗口必须保留可用的最小宽度');
 assert.ok(mainProcess.includes('EAS_RPA_SCREENSHOT_WIDTH'), '响应式布局必须支持固定尺寸截图回归');
 assert.ok(mainProcess.includes("ipcMain.handle('client:inspect'"), '客户端路径与版本探测必须由桌面主进程提供明确边界');
+assert.ok(mainProcess.includes("icon: path.join(__dirname, '..', 'build', 'icons', '512x512.png')"), '桌面窗口必须使用统一应用图标');
+assert.equal(packageJson.build.linux.icon, 'build/icons', 'Linux 桌面包必须使用标准尺寸图标目录');
+assert.equal(packageJson.build.win.icon, 'build/icon.png', 'Windows 安装包必须使用用户指定原始图标');
+assert.ok(packageJson.build.files.includes('build/icon.png'), '运行时必须保留用户指定原始图标');
+assert.ok(packageJson.build.files.includes('build/icons/512x512.png'), '运行时必须打包标准 512px 窗口图标');
+for (const size of [16,32,48,64,128,256,512,1024]) assert.ok(fs.existsSync(path.join(root, `build/icons/${size}x${size}.png`)), `缺少标准桌面图标尺寸：${size}`);
 
 const coordinator = read('src/core/run-coordinator.js');
 assert.ok(coordinator.includes('RETRYABLE_CODES'), '重试必须使用显式瞬时错误白名单');

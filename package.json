@@ -1,6 +1,6 @@
 {
   "name": "eascloud-rpa-console",
-  "version": "0.27.0",
+  "version": "0.27.1",
   "private": true,
   "description": "EAS Cloud multi-account RPA desktop console",
   "author": {
@@ -40,6 +40,8 @@
     "files": [
       "src/**/*",
       "build/java/*.jar",
+      "build/icon.png",
+      "build/icons/512x512.png",
       "package.json",
       "node_modules/yaml/**/*",
       "node_modules/keytar/**/*"
@@ -60,11 +62,12 @@
         "dir"
       ],
       "category": "Utility",
-      "icon": "build/icon.png",
+      "icon": "build/icons",
       "executableName": "eas-rpa-console",
       "syncDesktopName": true
     },
     "win": {
+      "icon": "build/icon.png",
       "target": [
         "nsis"
       ],

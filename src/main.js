@@ -66,6 +66,7 @@ function createWindow() {
     minHeight: MIN_WINDOW_HEIGHT,
     resizable: true,
     title: 'EAS 自动登录中心',
+    icon: path.join(__dirname, '..', 'build', 'icons', '512x512.png'),
     backgroundColor: '#eef1f5',
     autoHideMenuBar: true,
     webPreferences: {
@@ -102,6 +103,8 @@ function createWindow() {
           scrollWidth: document.documentElement.scrollWidth,
           scrollHeight: document.documentElement.scrollHeight,
           bodyScrollWidth: document.body.scrollWidth,
+          mainWidth: Math.round(document.querySelector('main').getBoundingClientRect().width),
+          workspaceHeight: Math.round(document.querySelector('.workspace').getBoundingClientRect().height),
           workspaceColumns: getComputedStyle(document.querySelector('.workspace')).gridTemplateColumns,
           background: getComputedStyle(document.querySelector('.app-shell')).backgroundColor
         })`);

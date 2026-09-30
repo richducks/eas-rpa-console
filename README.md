@@ -1,6 +1,6 @@
 # EAS 自动登录中心
 
-当前源码版本为 **0.27.0**。这一版把 EAS 客户端升级为一等模型：同一台电脑可保存多个 EAS 版本/安装目录，备注可编辑，客户端各自拥有数据中心，账号显式绑定客户端；0.26.x 的单客户端配置会自动迁移并保留迁移前备份。
+当前源码版本为 **0.27.1**。在 0.27.0 多客户端模型基础上，这一版修复最大化/超宽窗口的固定内容宽度问题：主界面会随窗口流式扩展，工作区高度也跟随视口；同时统一使用用户指定的蓝色 EAS 蝴蝶图作为 Linux/Windows 桌面与窗口图标。
 
 ![0.27.0 多客户端验收界面](docs/screenshots/v0.27.0/multi-client.png)
 
@@ -22,10 +22,10 @@
 
 Ubuntu 版本已在本机完成构建：
 
-- Ubuntu 免安装：`dist/EAS-RPA-Console-0.27.0-x86_64.AppImage`
-- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.27.0-amd64.deb`
+- Ubuntu 免安装：`dist/EAS-RPA-Console-0.27.1-x86_64.AppImage`
+- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.27.1-amd64.deb`
 
-Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块。0.27.0 的多客户端模型在 Windows/Linux 共用；Windows 仍使用 DPAPI、`client.bat`、PowerShell/CIM 和 Java Swing Agent，Linux 使用 Secret Service、`client.sh`、`/proc`、X11/AT-SPI。macOS 保留 POSIX/Keychain 适配入口，在完成 EAS 实机验收前仍视为实验支持。
+Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块。0.27.x 的多客户端模型在 Windows/Linux 共用；Windows 仍使用 DPAPI、`client.bat`、PowerShell/CIM 和 Java Swing Agent，Linux 使用 Secret Service、`client.sh`、`/proc`、X11/AT-SPI。macOS 保留 POSIX/Keychain 适配入口，在完成 EAS 实机验收前仍视为实验支持。
 
 AppImage 可直接双击运行。如当前系统未启用 FUSE，建议安装 `.deb` 包。
 
@@ -82,7 +82,7 @@ Linux 密码通过系统 Keyring/Secret Service 读取；Windows 密码使用当
 
 ## 历史版本
 
-已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.x` 建立跨平台适配层，`v0.25.0` 完成平台实现隔离，`v0.26.0` 完成两轮独立验收，`v0.26.1` 修复响应式布局，`v0.27.0` 引入多 EAS 客户端一等模型、备注管理与旧配置自动迁移。
+已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.x` 建立跨平台适配层，`v0.25.0` 完成平台实现隔离，`v0.26.0` 完成两轮独立验收，`v0.26.1` 修复响应式布局，`v0.27.0` 引入多 EAS 客户端一等模型、备注管理与旧配置自动迁移，`v0.27.1` 让最大化/超宽窗口真正流式扩展，并统一使用用户指定的 EAS 蝴蝶桌面图标。
 
 恢复版本的证据、分支设计和本地发布包归档位置见 [`docs/RECOVERED_HISTORY.md`](docs/RECOVERED_HISTORY.md)。
 
@@ -115,3 +115,7 @@ npm run acceptance
 - Brooks 工程轮：[`docs/ACCEPTANCE_BROOKS_0.27.0.md`](docs/ACCEPTANCE_BROOKS_0.27.0.md)
 - Jobs 产品轮：[`docs/ACCEPTANCE_PRODUCT_0.27.0.md`](docs/ACCEPTANCE_PRODUCT_0.27.0.md)
 - 发布勾选清单：[`docs/ACCEPTANCE_CHECKLIST_0.27.0.md`](docs/ACCEPTANCE_CHECKLIST_0.27.0.md)
+
+## 0.27.1 大窗口与图标验收
+
+- 大窗口流式布局与用户指定桌面图标：[`docs/RESPONSIVE_ICON_ACCEPTANCE_0.27.1.md`](docs/RESPONSIVE_ICON_ACCEPTANCE_0.27.1.md)
