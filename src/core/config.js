@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
 const { currentPlatform } = require('../platform');
+const { normalizeClients, getClient } = require('./client-registry');
+const { resolveLaunchSpec } = require('./launcher');
 
 const DEFAULT_CONFIG = {
   global: {
@@ -11,15 +13,10 @@ const DEFAULT_CONFIG = {
     retry_count: 1,
     continue_on_error: true
   },
-  launcher: {
-    desktop_file: currentPlatform.defaultDesktopFile,
-    command: null,
-    working_directory: null,
-    client_directory: currentPlatform.defaultClientDirectory
-  },
+  clients: [],
+  active_client_id: null,
   ui: {
-    login_window_title: '金蝶EAS Cloud系统登录',
-    data_centers: []
+    login_window_title: '金蝶EAS Cloud系统登录'
   },
   accounts: []
 };
@@ -30,18 +27,17 @@ function clone(value) {
 
 function normalizeConfig(config = {}) {
   const global = config.global && typeof config.global === 'object' ? config.global : {};
-  const launcher = config.launcher && typeof config.launcher === 'object' ? config.launcher : {};
   const ui = config.ui && typeof config.ui === 'object' ? config.ui : {};
+  const { data_centers: _legacyCenters, ...cleanUi } = ui;
+  const { launcher: _legacyLauncher, clients: _rawClients, active_client_id: _rawActiveClientId, accounts: _rawAccounts, ...rest } = config;
+  const migrated = normalizeClients(config, currentPlatform);
   return {
-    ...config,
+    ...rest,
     global: { ...DEFAULT_CONFIG.global, ...global },
-    launcher: { ...DEFAULT_CONFIG.launcher, ...launcher },
-    ui: {
-      ...DEFAULT_CONFIG.ui,
-      ...ui,
-      data_centers: Array.isArray(ui.data_centers) ? [...new Set(ui.data_centers.map(value => String(value || '').trim()).filter(Boolean))] : []
-    },
-    accounts: Array.isArray(config.accounts) ? config.accounts : []
+    clients: migrated.clients,
+    active_client_id: migrated.activeClientId,
+    ui: { ...DEFAULT_CONFIG.ui, ...cleanUi },
+    accounts: migrated.accounts
   };
 }
 
@@ -57,30 +53,49 @@ function validateConfig(config, options = {}) {
   if (typeof global.continue_on_error !== 'boolean') errors.push('global.continue_on_error 必须是布尔值');
   if (typeof normalized.ui.login_window_title !== 'string' || !normalized.ui.login_window_title.trim()) errors.push('ui.login_window_title 不能为空');
 
-  const ids = new Set();
+  const clientIds = new Set();
+  for (const [index, client] of normalized.clients.entries()) {
+    const prefix = `clients[${index}]`;
+    if (typeof client.id !== 'string' || !client.id.trim()) errors.push(`${prefix}.id 不能为空`);
+    if (typeof client.remark !== 'string' || !client.remark.trim()) errors.push(`${prefix}.remark 不能为空`);
+    if (clientIds.has(client.id)) errors.push(`客户端 ID 重复：${client.id}`);
+    clientIds.add(client.id);
+    if (client.command != null && (!Array.isArray(client.command) || !client.command.length || client.command.some(item => typeof item !== 'string' || !item.trim()))) errors.push(`${prefix}.command 必须为空或非空字符串数组`);
+    if (client.client_directory != null && (typeof client.client_directory !== 'string' || !client.client_directory.trim())) errors.push(`${prefix}.client_directory 必须为空或有效路径`);
+    if (!client.client_directory && !client.desktop_file && !(Array.isArray(client.command) && client.command.length)) errors.push(`${prefix} 至少需要客户端目录、启动器或启动命令之一`);
+  }
+  if (normalized.clients.length && !clientIds.has(normalized.active_client_id)) errors.push('active_client_id 必须指向已保存客户端');
+  if (!normalized.clients.length && normalized.active_client_id != null) errors.push('没有客户端时 active_client_id 必须为空');
+
+  const accountIds = new Set();
   for (const [index, account] of normalized.accounts.entries()) {
     const prefix = `accounts[${index}]`;
-    for (const key of ['id', 'data_center', 'username', 'password_keyring_service', 'password_keyring_key']) {
+    for (const key of ['id', 'client_id', 'data_center', 'username', 'password_keyring_service', 'password_keyring_key']) {
       if (typeof account[key] !== 'string' || !account[key].trim()) errors.push(`${prefix}.${key} 不能为空`);
     }
-    if (ids.has(account.id)) errors.push(`账号 ID 重复：${account.id}`);
-    ids.add(account.id);
+    if (accountIds.has(account.id)) errors.push(`账号 ID 重复：${account.id}`);
+    accountIds.add(account.id);
+    if (account.client_id && !clientIds.has(account.client_id)) errors.push(`${prefix}.client_id 指向不存在的客户端`);
     if ('password' in account) errors.push(`${prefix} 禁止保存明文 password`);
   }
 
-  const desktopFile = normalized.launcher.desktop_file;
-  const command = normalized.launcher.command;
-  const clientDirectory = normalized.launcher.client_directory;
-  if (command != null && (!Array.isArray(command) || !command.length || command.some(item => typeof item !== 'string' || !item.trim()))) errors.push('launcher.command 必须为空或非空字符串数组');
-  if (options.checkPaths && !desktopFile && !command && !clientDirectory) errors.push('请指定 EAS 客户端目录、Desktop 启动器或启动命令');
-  if (options.checkPaths && desktopFile && !command && !clientDirectory && !fs.existsSync(desktopFile)) errors.push(`启动器文件不存在：${desktopFile}`);
-  if (clientDirectory != null && (typeof clientDirectory !== 'string' || !clientDirectory.trim())) errors.push('launcher.client_directory 必须为空或有效路径');
-  if (options.checkPaths && clientDirectory && !command) {
-    const base = normalized.launcher.working_directory || (desktopFile && fs.existsSync(desktopFile) ? require('./desktop-file').parseDesktopFile(desktopFile).workingDirectory : process.cwd());
-    const resolvedDirectory = require('./launcher').resolveClientDirectory(normalized, base);
-    if (!fs.existsSync(resolvedDirectory)) errors.push(`EAS 客户端目录不存在：${resolvedDirectory}`);
+  if (options.checkPaths) {
+    const client = getClient(normalized, options.clientId);
+    if (!client) errors.push('请先选择 EAS 客户端');
+    else {
+      try { resolveLaunchSpec(client, options.platform || currentPlatform); }
+      catch (error) { errors.push(error.message); }
+    }
   }
   return { valid: errors.length === 0, errors, config: normalized };
+}
+
+function isLegacyConfig(config = {}) {
+  return Boolean(
+    config.launcher
+    || config.ui?.data_centers
+    || (Array.isArray(config.accounts) && config.accounts.some(account => !account?.client_id))
+  );
 }
 
 function readConfigFile(filePath) {
@@ -100,6 +115,7 @@ class ConfigStore {
   constructor(filePath) {
     this.filePath = filePath;
     this.backupPath = `${filePath}.bak`;
+    this.migrationBackupPath = `${filePath}.pre-multi-client.bak`;
     this.lastRecovery = null;
   }
 
@@ -112,7 +128,22 @@ class ConfigStore {
     this.ensure();
     try {
       this.lastRecovery = null;
-      return readConfigFile(this.filePath);
+      const source = YAML.parse(fs.readFileSync(this.filePath, 'utf8'));
+      const result = validateConfig(source);
+      if (!result.valid) throw new Error(`配置校验失败：${result.errors.join('；')}`);
+      if (isLegacyConfig(source)) {
+        try {
+          if (!fs.existsSync(this.migrationBackupPath)) {
+            fs.copyFileSync(this.filePath, this.migrationBackupPath);
+            fs.chmodSync(this.migrationBackupPath, 0o600);
+          }
+          writeAtomic(this.filePath, result.config);
+          this.lastRecovery = { migrated: true, source: this.migrationBackupPath };
+        } catch (migrationError) {
+          this.lastRecovery = { migrated: false, migrationError: migrationError.message };
+        }
+      }
+      return result.config;
     } catch (primaryError) {
       if (fs.existsSync(this.backupPath)) {
         try {
@@ -150,4 +181,4 @@ class ConfigStore {
   }
 }
 
-module.exports = { DEFAULT_CONFIG, ConfigStore, normalizeConfig, validateConfig };
+module.exports = { DEFAULT_CONFIG, ConfigStore, normalizeConfig, validateConfig, isLegacyConfig };

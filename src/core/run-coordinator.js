@@ -43,10 +43,14 @@ class RunCoordinator {
     return { ...result, attempts: attempt };
   }
 
-  async runDataCenter(config, dataCenter) {
-    if (typeof dataCenter !== 'string' || !dataCenter.trim()) return { status: 'FAILED', succeeded: 0, total: 0, message: '未选择数据中心', results: [] };
-    const accounts = config.accounts.filter(account => account.enabled && account.data_center === dataCenter);
-    if (!accounts.length) return { status: 'FAILED', succeeded: 0, total: 0, message: '当前数据中心没有启用账号', results: [] };
+  async runDataCenter(config, selection) {
+    const request = typeof selection === 'string' ? { clientId: config.active_client_id, dataCenter: selection } : (selection || {});
+    const clientId = String(request.clientId || '').trim();
+    const dataCenter = String(request.dataCenter || '').trim();
+    if (!clientId) return { status: 'FAILED', succeeded: 0, total: 0, message: '未选择 EAS 客户端', results: [] };
+    if (!dataCenter) return { status: 'FAILED', succeeded: 0, total: 0, message: '未选择数据中心', results: [] };
+    const accounts = config.accounts.filter(account => account.enabled && account.client_id === clientId && account.data_center === dataCenter);
+    if (!accounts.length) return { status: 'FAILED', succeeded: 0, total: 0, message: '当前客户端的数据中心没有启用账号', results: [] };
     const results = [];
     for (const account of accounts) {
       const result = await this.executeAccount(config, account);

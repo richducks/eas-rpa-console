@@ -3,8 +3,12 @@ const path = require('path');
 const { parseDesktopFile } = require('./desktop-file');
 const { currentPlatform } = require('../platform');
 
-function resolveClientDirectory(config, baseDirectory = process.cwd()) {
-  const configured = config.launcher?.client_directory;
+function launcherFrom(value = {}) {
+  return value.launcher && typeof value.launcher === 'object' ? value.launcher : value;
+}
+
+function resolveClientDirectory(clientOrConfig, baseDirectory = process.cwd()) {
+  const configured = launcherFrom(clientOrConfig).client_directory;
   if (!configured) return null;
   let chosen = path.resolve(baseDirectory, configured);
   if (fs.existsSync(chosen) && fs.statSync(chosen).isFile()) chosen = path.dirname(chosen);
@@ -16,8 +20,8 @@ function resolveClientDirectory(config, baseDirectory = process.cwd()) {
   return chosen;
 }
 
-function resolveLaunchSpec(config, platform = currentPlatform) {
-  const launcher = config.launcher || {};
+function resolveLaunchSpec(clientOrConfig, platform = currentPlatform) {
+  const launcher = launcherFrom(clientOrConfig);
   if (Array.isArray(launcher.command) && launcher.command.length) {
     if (launcher.command.some(item => typeof item !== 'string' || !item)) throw new Error('launcher.command 必须是非空字符串数组');
     return {
@@ -28,7 +32,7 @@ function resolveLaunchSpec(config, platform = currentPlatform) {
     };
   }
   const desktop = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file) : null;
-  const clientDirectory = resolveClientDirectory(config, launcher.working_directory || desktop?.workingDirectory || process.cwd());
+  const clientDirectory = resolveClientDirectory(launcher, launcher.working_directory || desktop?.workingDirectory || process.cwd());
   if (clientDirectory) {
     const startupScript = path.join(clientDirectory, 'bin', platform.startupScriptName);
     if (!fs.existsSync(startupScript)) throw new Error(`所选 EAS 客户端目录缺少启动文件：${startupScript}`);
@@ -50,4 +54,4 @@ function publicLaunchSpec(spec) {
   return { executable: path.basename(spec.executable), argumentCount: spec.args.length, source: spec.source, workingDirectory: spec.workingDirectory };
 }
 
-module.exports = { resolveLaunchSpec, resolveClientDirectory, publicLaunchSpec };
+module.exports = { resolveLaunchSpec, resolveClientDirectory, publicLaunchSpec, launcherFrom };

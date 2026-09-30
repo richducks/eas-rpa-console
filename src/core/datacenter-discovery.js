@@ -7,6 +7,7 @@ const { resolveLaunchSpec, resolveClientDirectory } = require('./launcher');
 const { parseDesktopFile } = require('./desktop-file');
 const { ProcessManager } = require('./process-manager');
 const { currentPlatform } = require('../platform');
+const { getClient } = require('./client-registry');
 
 const execFileAsync = promisify(execFile);
 
@@ -74,8 +75,10 @@ async function discoverLiveDataCenters(config, assets, dependencies = {}) {
   if (!assets?.helperJar || !assets?.agentJar || !fs.existsSync(assets.helperJar) || !fs.existsSync(assets.agentJar)) {
     throw Object.assign(new Error('数据中心探测 Agent 不完整'), { code: 'DATACENTER_AGENT_MISSING' });
   }
+  const client = getClient(config, dependencies.clientId);
+  if (!client) throw Object.assign(new Error('未选择 EAS 客户端'), { code: 'CLIENT_NOT_SELECTED' });
   const manager = dependencies.processManager || new ProcessManager(platform);
-  const spec = resolveLaunchSpec(config, platform);
+  const spec = resolveLaunchSpec(client, platform);
   const runId = `discover-${Date.now()}`;
   const record = manager.launch(spec, { runId, accountId: null });
   let javaPid = null;
@@ -113,12 +116,13 @@ async function discoverLiveDataCenters(config, assets, dependencies = {}) {
 
 async function discoverDataCenters(config, options = {}) {
   const platform = options.platform || currentPlatform;
-  const configured = config.launcher?.client_directory;
-  const spec = configured ? null : resolveLaunchSpec(config, platform);
+  const client = getClient(config, options.clientId);
+  if (!client) throw Object.assign(new Error('未选择 EAS 客户端'), { code: 'CLIENT_NOT_SELECTED' });
+  const configured = client.client_directory;
+  const spec = configured ? null : resolveLaunchSpec(client, platform);
   const root = spec ? installationRoot(spec) : null;
-  const launcher = config.launcher || {};
-  const desktopBase = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file).workingDirectory : process.cwd();
-  const clientDirectory = configured ? resolveClientDirectory(config, launcher.working_directory || desktopBase) : path.join(root, 'client');
+  const desktopBase = client.desktop_file && fs.existsSync(client.desktop_file) ? parseDesktopFile(client.desktop_file).workingDirectory : process.cwd();
+  const clientDirectory = configured ? resolveClientDirectory(client, client.working_directory || desktopBase) : path.join(root, 'client');
   if (!fs.existsSync(clientDirectory) || !fs.statSync(clientDirectory).isDirectory()) throw Object.assign(new Error(`EAS 客户端目录不存在：${clientDirectory}`), { code: 'CLIENT_DIRECTORY_NOT_FOUND' });
   const markers = ['bin/client.sh', 'bin/client.bat', 'deploy/client/config.xml', 'deploy/client/datacenters.xml'];
   if (!markers.some(marker => fs.existsSync(path.join(clientDirectory, marker)))) throw Object.assign(new Error('所选目录不是 EAS 客户端目录，请选择含 bin 或 deploy 的目录'), { code: 'CLIENT_DIRECTORY_INVALID' });
@@ -129,17 +133,17 @@ async function discoverDataCenters(config, options = {}) {
   let live = [];
   let liveError = null;
   if (options.helperJar && options.agentJar) {
-    try { live = await (options.liveDiscover || discoverLiveDataCenters)(config, options, { ...options.dependencies, platform }); }
+    try { live = await (options.liveDiscover || discoverLiveDataCenters)(config, options, { ...options.dependencies, platform, clientId: client.id }); }
     catch (error) { liveError = { code: error.code || 'LIVE_DISCOVERY_FAILED', message: error.message }; }
   }
-  const saved = Array.isArray(config.ui?.data_centers) ? config.ui.data_centers : [];
-  const accountCenters = Array.isArray(config.accounts) ? config.accounts.map(account => account.data_center) : [];
+  const saved = Array.isArray(client.data_centers) ? client.data_centers : [];
+  const accountCenters = Array.isArray(config.accounts) ? config.accounts.filter(account => account.client_id === client.id).map(account => account.data_center) : [];
   const discovered = live.length ? live : [...installed, ...cached.names];
   const legacyFallback = live.length ? [] : [...saved, ...accountCenters];
   const dataCenters = [...new Set([...discovered, ...legacyFallback].map(value => String(value || '').trim()).filter(Boolean))];
   if (!dataCenters.length) throw Object.assign(new Error('安装目录中尚无数据中心配置，请确认 EAS 客户端已完成初始化'), { code: 'DATACENTER_CONFIG_NOT_FOUND' });
   const launcherFile = path.join(clientDirectory, 'bin', platform.startupScriptName);
-  return { dataCenters, windowBackend: live.length ? 'java-swing-agent' : files.length ? 'install-directory' : cached.names.length ? 'client-cache' : 'local-saved-config', clientDirectory, launcherFile, sourceFiles: [...files.map(file => path.relative(clientDirectory, file)), ...cached.sources], liveError };
+  return { clientId: client.id, dataCenters, windowBackend: live.length ? 'java-swing-agent' : files.length ? 'install-directory' : cached.names.length ? 'client-cache' : 'local-saved-config', clientDirectory, launcherFile, sourceFiles: [...files.map(file => path.relative(clientDirectory, file)), ...cached.sources], liveError };
 }
 
 module.exports = { discoverDataCenters, discoverLiveDataCenters, parseDataCenterXml, readServerHost, discoverCachedDataCenters };

@@ -23,8 +23,11 @@ const platformReads = jsFiles.filter(file => fs.readFileSync(file, 'utf8').inclu
 assert.deepEqual(platformReads, ['src/platform/index.js'], 'process.platform 只能出现在平台入口');
 
 const { DEFAULT_CONFIG } = require(path.join(root, 'src/core/config'));
+assert.deepEqual(DEFAULT_CONFIG.clients, [], '首次启动不得注入演示客户端');
+assert.equal(DEFAULT_CONFIG.active_client_id, null, '首次启动不得伪造当前客户端');
 assert.deepEqual(DEFAULT_CONFIG.accounts, [], '首次启动不得注入演示账号');
-assert.deepEqual(DEFAULT_CONFIG.ui.data_centers, [], '首次启动不得注入演示数据中心');
+assert.equal('data_centers' in DEFAULT_CONFIG.ui, false, '数据中心必须属于客户端，而不是全局 UI');
+assert.equal('launcher' in DEFAULT_CONFIG, false, '启动配置必须属于客户端，而不是全局配置');
 for (const deadField of ['screenshot_on_failure', 'max_instances']) assert.equal(deadField in DEFAULT_CONFIG.global, false, `默认配置不得继续暴露未实现字段：${deadField}`);
 
 const coreSource = fs.readdirSync(path.join(root, 'src/core')).filter(name => name.endsWith('.js')).map(name => read(`src/core/${name}`)).join('\n');
@@ -33,12 +36,22 @@ for (const forbidden of ['powershell.exe', 'taskkill.exe', 'secret-tool', '/proc
 }
 
 const html = read('src/renderer/index.html');
-for (const required of ['3 步完成设置', 'EAS 客户端', '数据中心', '登录账号', '运行诊断']) assert.ok(html.includes(required), `首次使用路径缺少：${required}`);
+for (const required of ['3 步完成设置', '当前客户端', '管理客户端', 'EAS 客户端', '数据中心', '登录账号', '运行诊断']) assert.ok(html.includes(required), `首次使用路径缺少：${required}`);
 for (const forbidden of ['Keyring 凭据', 'RPA CONTROL CENTER', '自动化能力矩阵']) assert.equal(html.includes(forbidden), false, `主界面不应暴露实现术语：${forbidden}`);
-for (const required of ['manual-datacenter', 'delete-account']) assert.ok(html.includes(required), `失败/维护路径缺少一致的界面入口：${required}`);
+for (const required of ['manual-datacenter', 'delete-account', 'client-modal', 'client-editor-modal', 'delete-client']) assert.ok(html.includes(required), `失败/维护路径缺少一致的界面入口：${required}`);
 const renderer = read('src/renderer/app.js');
 assert.equal(renderer.includes('window.prompt('), false, '主流程不得回退到浏览器原生 prompt');
 assert.ok(renderer.includes('await checkCredentials();'), '批量登录前必须预检查凭据，避免任务启动后才发现缺密码');
+assert.ok(renderer.includes('client_id: selectedClientId'), '新增账号必须显式绑定当前客户端');
+assert.ok(renderer.includes("startFoundationRun({ clientId: selectedClientId, dataCenter: selectedDataCenter })"), '批量登录必须同时传客户端和数据中心边界');
+assert.ok(renderer.includes('linkedAccounts'), '删除客户端必须检查账号引用');
+
+const configSource = read('src/core/config.js');
+const registrySource = read('src/core/client-registry.js');
+const discoverySource = read('src/core/datacenter-discovery.js');
+assert.ok(configSource.includes('migrationBackupPath'), '旧单客户端配置迁移必须保留独立备份');
+assert.ok(registrySource.includes('client_id'), '客户端模型必须负责旧账号绑定迁移');
+assert.ok(discoverySource.includes("account.client_id === client.id"), '数据中心回退必须隔离客户端账号');
 
 const css = read('src/renderer/styles.css');
 assert.equal((css.match(/:root\{/g) || []).length, 1, '视觉变量必须只有一套根定义，避免主题层叠互相覆盖');
@@ -52,6 +65,7 @@ assert.ok(css.includes('.workspace{grid-template-columns:1fr;min-height:0}'), '�
 const mainProcess = read('src/main.js');
 assert.ok(mainProcess.includes('const MIN_WINDOW_WIDTH = 420;'), '桌面窗口必须保留可用的最小宽度');
 assert.ok(mainProcess.includes('EAS_RPA_SCREENSHOT_WIDTH'), '响应式布局必须支持固定尺寸截图回归');
+assert.ok(mainProcess.includes("ipcMain.handle('client:inspect'"), '客户端路径与版本探测必须由桌面主进程提供明确边界');
 
 const coordinator = read('src/core/run-coordinator.js');
 assert.ok(coordinator.includes('RETRYABLE_CODES'), '重试必须使用显式瞬时错误白名单');

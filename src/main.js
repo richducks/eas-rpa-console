@@ -10,12 +10,15 @@ const { ProcessManager } = require('./core/process-manager');
 const { FoundationRunner } = require('./core/runner');
 const { RunCoordinator } = require('./core/run-coordinator');
 const { discoverDataCenters } = require('./core/datacenter-discovery');
+const { inspectClientDirectory } = require('./core/client-inspector');
 const { currentPlatform } = require('./platform');
 
 let configStore;
 let logger;
 let runner;
 let runCoordinator;
+
+if (process.env.EAS_RPA_USER_DATA_DIR) app.setPath('userData', path.resolve(process.env.EAS_RPA_USER_DATA_DIR));
 
 const MIN_WINDOW_WIDTH = 420;
 const MIN_WINDOW_HEIGHT = 420;
@@ -87,6 +90,9 @@ function createWindow() {
       const screenshotPage = process.env.EAS_RPA_SCREENSHOT_PAGE;
       if (['dashboard', 'environment', 'logs', 'settings'].includes(screenshotPage)) await win.webContents.executeJavaScript(`goTo('${screenshotPage}')`);
       if (screenshotPage === 'environment') await win.webContents.executeJavaScript('probeEnvironment()');
+      const screenshotModal = process.env.EAS_RPA_SCREENSHOT_MODAL;
+      if (screenshotModal === 'clients') await win.webContents.executeJavaScript('openClientManager()');
+      if (screenshotModal === 'client-editor') await win.webContents.executeJavaScript('openClientEditor()');
       if (process.env.EAS_RPA_SCREENSHOT_THEME === 'dark') await win.webContents.executeJavaScript("document.body.classList.add('dark')");
       await new Promise(resolve => setTimeout(resolve, 250));
       if (process.env.EAS_RPA_LAYOUT_REPORT) {
@@ -132,9 +138,9 @@ app.whenReady().then(() => {
     hostname: os.hostname()
   }));
 
-  ipcMain.handle('environment:probe', async () => {
+  ipcMain.handle('environment:probe', async (_event, clientId) => {
     const config = configStore.load();
-    const result = await probeEnvironment(config, { platform: currentPlatform });
+    const result = await probeEnvironment(config, { platform: currentPlatform, clientId });
     logger.write('INFO', 'ENVIRONMENT_PROBED', {
       run_id: null,
       account_id: null,
@@ -204,12 +210,12 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('app:paths', () => ({ userData: dataDirectory, config: configStore.filePath, logs: logger.logDirectory }));
-  ipcMain.handle('task:start-foundation', async (_event, dataCenter) => runCoordinator.runDataCenter(configStore.load(), dataCenter));
+  ipcMain.handle('task:start-foundation', async (_event, selection) => runCoordinator.runDataCenter(configStore.load(), selection));
   ipcMain.handle('task:start-account', async (_event, accountId) => runCoordinator.runAccount(configStore.load(), accountId));
   ipcMain.handle('task:stop', () => runner.stop());
-  ipcMain.handle('datacenters:discover', async () => {
+  ipcMain.handle('datacenters:discover', async (_event, clientId) => {
     try {
-      const result = await discoverDataCenters(configStore.load(), { helperJar: path.join(javaAssetRoot, 'attach-helper.jar'), agentJar: path.join(javaAssetRoot, 'datacenter-agent.jar'), platform: currentPlatform });
+      const result = await discoverDataCenters(configStore.load(), { clientId, helperJar: path.join(javaAssetRoot, 'attach-helper.jar'), agentJar: path.join(javaAssetRoot, 'datacenter-agent.jar'), platform: currentPlatform });
       logger.write('INFO', 'DATACENTERS_DISCOVERED', { run_id: null, account_id: null, stage: 'DISCOVER_DATACENTERS', status: 'COMPLETE', count: result.dataCenters.length, backend: result.windowBackend });
       return { ok: true, ...result };
     } catch (error) {
@@ -217,6 +223,8 @@ app.whenReady().then(() => {
       return { ok: false, code: error.code || 'DISCOVERY_FAILED', message: error.message };
     }
   });
+
+  ipcMain.handle('client:inspect', (_event, directory) => inspectClientDirectory(directory, currentPlatform));
 
   ipcMain.handle('launcher:pick', async () => {
     const result = await dialog.showOpenDialog({

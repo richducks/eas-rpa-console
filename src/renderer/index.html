@@ -30,10 +30,15 @@
           <button class="primary-button" id="run-button" disabled>登录已启用账号</button>
         </div>
 
+        <section class="client-bar card" id="client-bar">
+          <div class="client-current"><span>当前客户端</span><strong id="active-client-label">尚未添加</strong><small id="active-client-meta">保存常用 EAS 客户端后可快速切换</small></div>
+          <div class="client-bar-actions"><select id="client-select" aria-label="选择 EAS 客户端"><option value="">尚未添加客户端</option></select><button class="secondary-button" id="manage-clients">管理客户端</button></div>
+        </section>
+
         <section class="setup-card" id="setup-card">
           <div class="setup-copy"><span class="eyebrow">首次使用</span><h2>3 步完成设置</h2><p id="setup-summary">先指定 EAS 客户端，再读取数据中心并添加账号。</p></div>
           <div class="setup-steps">
-            <button class="setup-step" id="setup-client"><span class="step-index">1</span><span><strong>EAS 客户端</strong><small id="setup-client-state">未选择</small></span><em>选择</em></button>
+            <button class="setup-step" id="setup-client"><span class="step-index">1</span><span><strong>EAS 客户端</strong><small id="setup-client-state">尚未添加</small></span><em>添加</em></button>
             <button class="setup-step" id="setup-centers"><span class="step-index">2</span><span><strong>数据中心</strong><small id="setup-centers-state">等待客户端</small></span><em>读取</em></button>
             <button class="setup-step" id="setup-account"><span class="step-index">3</span><span><strong>登录账号</strong><small id="setup-account-state">尚未添加</small></span><em>添加</em></button>
           </div>
@@ -43,7 +48,7 @@
           <aside class="center-panel card">
             <div class="card-head"><div><h2>数据中心</h2><p id="datacenter-source">尚未读取</p></div><div class="head-links"><button class="text-button" id="manual-datacenter">手动添加</button><button class="text-button" id="refresh-datacenters">刷新</button></div></div>
             <div id="datacenter-list" class="center-list"></div>
-            <button class="quiet-button full" id="choose-client-directory">选择其他 EAS 客户端</button>
+            <button class="quiet-button full" id="choose-client-directory">管理 EAS 客户端</button>
           </aside>
 
           <section class="accounts-panel card">
@@ -69,9 +74,9 @@
       </section>
 
       <section class="page" id="settings-page">
-        <div class="page-head"><div><h1>设置</h1><p>常用操作不需要改这里。仅在客户端路径或超时策略有特殊要求时调整。</p></div><button class="primary-button" id="save-settings">保存</button></div>
+        <div class="page-head"><div><h1>设置</h1><p>常用操作不需要改这里。客户端版本和路径统一在“客户端管理”中维护。</p></div><button class="primary-button" id="save-settings">保存</button></div>
         <div class="settings-grid">
-          <section class="card form-card"><h2>EAS 客户端</h2><label>客户端目录<div class="input-action"><input id="client-directory" placeholder="选择 EAS 根目录或 client 目录" /><button id="browse-client-directory">选择</button></div></label><label>启动器文件<div class="input-action"><input id="launcher-path" placeholder="可选：Desktop / bat / sh" /><button id="browse-launcher">选择</button></div></label><p class="form-help">优先使用客户端目录；只有特殊安装方式才需要指定启动器。</p></section>
+          <section class="card form-card"><h2>客户端管理</h2><p class="form-help">可同时保存多个 EAS 版本与安装目录。账号和数据中心会绑定到各自客户端，不会串用。</p><div class="settings-client-summary"><strong id="settings-client-count">0 个客户端</strong><small id="settings-active-client">尚未选择</small></div><button class="secondary-button settings-manage-button" id="settings-manage-clients">管理客户端</button></section>
           <section class="card form-card"><h2>失败处理</h2><div class="field-grid"><label>启动超时（秒）<input id="startup-timeout" type="number" min="10" /></label><label>登录超时（秒）<input id="login-timeout" type="number" min="10" /></label><label>瞬时失败重试<input id="retry-count" type="number" min="0" max="3" /></label><label>检查间隔（秒）<input id="poll-interval" type="number" min="0.1" step="0.1" /></label></div><label class="switch-row"><span><strong>单个账号失败后继续</strong><small>批量登录不会被一个账号阻断</small></span><input id="continue-on-error" type="checkbox" /><i></i></label></section>
         </div>
       </section>
@@ -79,6 +84,26 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal-backdrop" id="client-modal" aria-hidden="true">
+    <section class="modal client-manager-modal" role="dialog" aria-modal="true" aria-labelledby="client-manager-title">
+      <div class="modal-head"><div><h2 id="client-manager-title">EAS 客户端</h2><p>保存多个版本和安装目录，登录前只需切换当前客户端。</p></div><button type="button" class="client-modal-close modal-close" aria-label="关闭">×</button></div>
+      <div class="client-manager-list" id="client-manager-list"></div>
+      <div class="client-manager-footer"><button type="button" class="secondary-button" id="add-client">＋ 添加客户端</button><button type="button" class="quiet-button client-modal-close">完成</button></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="client-editor-modal" aria-hidden="true">
+    <form class="modal client-editor-modal" id="client-form">
+      <div class="modal-head"><div><h2 id="client-editor-title">添加客户端</h2><p>选择 EAS 根目录、client 目录或 bin 目录。版本会自动识别。</p></div><button type="button" class="client-editor-close modal-close" aria-label="关闭">×</button></div>
+      <input type="hidden" name="clientId" />
+      <label>备注<input name="remark" required maxlength="60" placeholder="例如：生产 8.8 / 测试 9.0" /></label>
+      <label>客户端目录<div class="input-action"><input name="clientDirectory" placeholder="选择 EAS 客户端目录" /><button type="button" id="browse-client-editor">选择</button></div></label>
+      <div class="client-inspection" id="client-inspection"><strong>等待选择目录</strong><small>识别不到具体版本时仍可按 EAS 兼容模式使用。</small></div>
+      <details class="advanced-client"><summary>高级启动方式</summary><label>启动器文件<div class="input-action"><input name="desktopFile" placeholder="可选：Desktop / bat / sh" /><button type="button" id="browse-client-launcher">选择</button></div></label></details>
+      <div class="modal-actions"><button type="button" class="danger-button" id="delete-client" hidden>删除客户端</button><button type="button" class="quiet-button client-editor-close">取消</button><button class="primary-button" type="submit">保存客户端</button></div>
+    </form>
+  </div>
 
   <div class="modal-backdrop" id="account-modal" aria-hidden="true">
     <form class="modal" id="account-form">

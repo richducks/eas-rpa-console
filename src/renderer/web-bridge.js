@@ -4,8 +4,8 @@
   const storageKey = 'eas-rpa-web-config';
   const defaultConfig = {
     global: { startup_timeout_seconds: 120, login_timeout_seconds: 60, poll_interval_seconds: 0.5, retry_count: 1, continue_on_error: true },
-    launcher: { desktop_file: '', command: null, working_directory: null, client_directory: null },
-    ui: { login_window_title: '金蝶EAS Cloud系统登录', data_centers: [] },
+    clients: [], active_client_id: null,
+    ui: { login_window_title: '金蝶EAS Cloud系统登录' },
     accounts: []
   };
   const readConfig = () => {
@@ -15,10 +15,10 @@
 
   window.easDesktop = {
     getEnvironment: async () => ({ platform: 'Web', session: 'browser', display: '内置浏览器', architecture: 'web', hostname: location.hostname || 'local' }),
-    probeEnvironment: async () => ({
+    probeEnvironment: async (clientId) => ({
       system: { platform: 'Web 浏览器', hostname: location.hostname || 'local' },
       session: { type: 'browser', evidence: { display: '内置浏览器' } },
-      tools: {}, launcher: { parsed: false },
+      tools: {}, launcher: { parsed: false, clientId, error: '网页版不能探测本机客户端' },
       capabilities: [{ id: 'web', name: '网页版管理模式', detail: '浏览器不能启动或控制本机 EAS 客户端', available: false, status: '仅管理' }]
     }),
     getConfig: async () => ({ config: readConfig(), path: '浏览器本地存储' }),
@@ -35,6 +35,7 @@
       const dataCenters = String(value || '').split(/[,，]/).map(item => item.trim()).filter(Boolean);
       return dataCenters.length ? { ok: true, dataCenters, windowBackend: 'manual-web' } : { ok: false, code: 'WEB_MANUAL_CANCELLED', message: '未添加数据中心' };
     },
+    inspectClient: async directory => ({ valid: Boolean(String(directory || '').trim()), clientDirectory: String(directory || '').trim(), detectedVersion: null, versionSource: null, compatibility: 'EAS 兼容模式', message: '网页版仅用于界面预览，无法验证本机目录' }),
     onTaskEvent: () => () => {},
     pickLauncher: async () => null,
     pickClientDirectory: async () => null

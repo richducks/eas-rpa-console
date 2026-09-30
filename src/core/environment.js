@@ -1,6 +1,6 @@
-const fs = require('fs');
 const os = require('os');
-const { parseDesktopFile } = require('./desktop-file');
+const { resolveLaunchSpec, publicLaunchSpec } = require('./launcher');
+const { getClient } = require('./client-registry');
 const { currentPlatform } = require('../platform');
 
 async function commandExists(command, platform = currentPlatform) {
@@ -20,20 +20,18 @@ async function probeEnvironment(config, options = {}) {
   tools.dogtail = Boolean(accessibility.dogtail);
   tools.atspi = Boolean(accessibility.atspi);
 
-  const desktopFile = config.launcher?.desktop_file;
-  let launcher = { configured: Boolean(desktopFile || config.launcher?.command), readable: false, parsed: false, error: null, command: null };
-  if (desktopFile) {
-    launcher.readable = fs.existsSync(desktopFile);
-    if (launcher.readable) {
-      try { const parsed = parseDesktopFile(desktopFile); launcher = { ...launcher, parsed: true, command: parsed.argv[0], workingDirectory: parsed.workingDirectory }; }
-      catch (error) { launcher.error = error.message; }
-    } else launcher.error = '启动器文件不存在';
-  } else if (Array.isArray(config.launcher?.command) && config.launcher.command.length) {
-    launcher = { ...launcher, readable: true, parsed: true, command: config.launcher.command[0] };
+  const client = getClient(config, options.clientId);
+  let launcher = { configured: Boolean(client), readable: false, parsed: false, error: null, command: null, clientId: client?.id || null, remark: client?.remark || null, version: client?.detected_version || null };
+  if (client) {
+    try {
+      const spec = resolveLaunchSpec(client, platform);
+      const publicSpec = publicLaunchSpec(spec);
+      launcher = { ...launcher, readable: true, parsed: true, command: publicSpec.executable, workingDirectory: publicSpec.workingDirectory, source: publicSpec.source };
+    } catch (error) { launcher.error = error.message; }
   }
 
   const capabilities = platform.describeCapabilities({ session, tools, launcher });
-  return { timestamp: new Date().toISOString(), system: { platform: `${os.type()} ${os.release()}`, architecture: os.arch(), hostname: os.hostname() }, session, tools, launcher, capabilities };
+  return { timestamp: new Date().toISOString(), system: { platform: `${os.type()} ${os.release()}`, architecture: os.arch(), hostname: os.hostname() }, session, tools, launcher, client, capabilities };
 }
 
 module.exports = { commandExists, detectSession, probeEnvironment };

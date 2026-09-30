@@ -4,12 +4,33 @@ global:
   poll_interval_seconds: 0.5
   retry_count: 1
   continue_on_error: true
-launcher:
-  desktop_file: /opt/Kingdee/EASCloud.desktop
-  command: null
-  working_directory: null
-  client_directory: null
+clients:
+  - id: eas88-dev
+    remark: 开发 EAS 8.8
+    client_directory: /opt/kingdee/eas88/client
+    desktop_file: null
+    command: null
+    working_directory: null
+    detected_version: "8.8"
+    data_centers:
+      - 测试中心
+  - id: eas90-test
+    remark: 测试 EAS 9.0
+    client_directory: /opt/kingdee/eas90/client
+    desktop_file: null
+    command: null
+    working_directory: null
+    detected_version: "9.0"
+    data_centers: []
+active_client_id: eas88-dev
 ui:
   login_window_title: 金蝶EAS Cloud系统登录
-  data_centers: []
-accounts: []
+accounts:
+  - id: demo-user
+    client_id: eas88-dev
+    name: 示例账号
+    data_center: 测试中心
+    username: demo
+    password_keyring_service: eascloud-rpa
+    password_keyring_key: demo-user
+    enabled: false

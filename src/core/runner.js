@@ -5,6 +5,7 @@ const { probeEnvironment } = require('./environment');
 const { waitForLoginWindow } = require('./windowing');
 const { automateLogin } = require('./login-automation');
 const { currentPlatform } = require('../platform');
+const { getClient } = require('./client-registry');
 
 class FoundationRunner {
   constructor({ processManager, logger, emit, assets = {}, dependencies = {}, platform = currentPlatform }) {
@@ -37,18 +38,20 @@ class FoundationRunner {
     this.active = { runId, cancelled: false, pid: null };
     try {
       this.event(runId, null, 'VALIDATE_CONFIG', 'RUNNING');
-      const validation = validateConfig(config, { checkPaths: true });
-      if (!validation.valid) throw Object.assign(new Error(validation.errors[0]), { code: 'CONFIG_INVALID', details: validation.errors });
       const account = config.accounts.find(item => item.enabled);
       if (!account) throw Object.assign(new Error('没有已启用账号'), { code: 'NO_ENABLED_ACCOUNT' });
+      const client = getClient(config, account.client_id);
+      if (!client) throw Object.assign(new Error('账号绑定的 EAS 客户端不存在'), { code: 'CLIENT_NOT_FOUND' });
+      const validation = validateConfig(config, { checkPaths: true, clientId: client.id, platform: this.platform });
+      if (!validation.valid) throw Object.assign(new Error(validation.errors[0]), { code: 'CONFIG_INVALID', details: validation.errors });
       currentAccountId = account.id;
       this.event(runId, account.id, 'VALIDATE_CREDENTIAL', 'RUNNING');
       credential = await this.dependencies.getCredential(account.password_keyring_service, account.password_keyring_key, this.platform);
       if (!credential.available) throw Object.assign(new Error('Keyring 凭据缺失'), { code: credential.code });
 
       this.event(runId, account.id, 'DISCOVER_ENV', 'RUNNING');
-      const environment = await this.dependencies.probeEnvironment(config, { platform: this.platform });
-      const spec = resolveLaunchSpec(config, this.platform);
+      const environment = await this.dependencies.probeEnvironment(config, { platform: this.platform, clientId: client.id });
+      const spec = resolveLaunchSpec(client, this.platform);
       this.event(runId, account.id, 'START_CLIENT', 'RUNNING', { launch: publicLaunchSpec(spec) });
       const record = this.processManager.launch(spec, { runId, accountId: account.id });
       this.active.pid = record.pid;
