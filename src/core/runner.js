@@ -4,9 +4,11 @@ const { getCredential } = require('./credentials');
 const { probeEnvironment } = require('./environment');
 const { waitForLoginWindow } = require('./windowing');
 const { automateLogin } = require('./login-automation');
+const { currentPlatform } = require('../platform');
 
 class FoundationRunner {
-  constructor({ processManager, logger, emit, assets = {}, dependencies = {} }) {
+  constructor({ processManager, logger, emit, assets = {}, dependencies = {}, platform = currentPlatform }) {
+    this.platform = platform;
     this.processManager = processManager;
     this.logger = logger;
     this.emit = emit || (() => {});
@@ -40,12 +42,12 @@ class FoundationRunner {
       if (!account) throw Object.assign(new Error('没有已启用账号'), { code: 'NO_ENABLED_ACCOUNT' });
       currentAccountId = account.id;
       this.event(runId, account.id, 'VALIDATE_CREDENTIAL', 'RUNNING');
-      const credential = await this.dependencies.getCredential(account.password_keyring_service, account.password_keyring_key);
+      const credential = await this.dependencies.getCredential(account.password_keyring_service, account.password_keyring_key, this.platform);
       if (!credential.available) throw Object.assign(new Error('Keyring 凭据缺失'), { code: credential.code });
 
       this.event(runId, account.id, 'DISCOVER_ENV', 'RUNNING');
-      const environment = await this.dependencies.probeEnvironment(config);
-      const spec = resolveLaunchSpec(config);
+      const environment = await this.dependencies.probeEnvironment(config, { platform: this.platform });
+      const spec = resolveLaunchSpec(config, this.platform);
       this.event(runId, account.id, 'START_CLIENT', 'RUNNING', { launch: publicLaunchSpec(spec) });
       const record = this.processManager.launch(spec, { runId, accountId: account.id });
       this.active.pid = record.pid;
@@ -74,7 +76,8 @@ class FoundationRunner {
         automation = await this.dependencies.automateLogin({
           pid: javaRecord.pid, account, password: credential.password, spec, environment, config,
           helperJar: this.assets.helperJar, agentJar: this.assets.agentJar,
-          isCancelled: () => this.active?.cancelled
+          isCancelled: () => this.active?.cancelled,
+          platform: this.platform
         });
       } finally { credential.password = null; }
       this.event(runId, account.id, 'VERIFY_LOGIN', 'RUNNING', { pid: javaRecord.pid, backend: automation.backend });

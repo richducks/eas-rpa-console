@@ -51,17 +51,21 @@ Git 分支 `history/windows-0.21.2` 排除开发辅助目录 `src/web-marker/*` 
 2. 历史工作区额外存在 `src/web-marker/index.html`、`marker.css`、`marker.js` 三个开发辅助文件，但它们没有进入正式安装包。
 3. Windows 0.21.2 的关键能力包括 DPAPI 凭据、`client.bat` 启动、PowerShell/CIM 进程树、Java Swing Agent 登录和 Windows 数据中心探测。
 
-## 0.24.0 重构后的处理方式
+## 0.25.0 重构后的处理方式
 
-0.21.2 不再作为一套独立 Windows 代码长期维护。其经过验证的 Windows 能力已经并入主线，并在 0.24.0 中进一步整理为统一平台适配结构：
+0.21.2 不再作为一套独立 Windows 代码长期维护。0.25.0 再次以该正式安装包为权威样本复核能力，并把平台差异从“策略字段”进一步重构为独立实现模块：
 
 ```text
-src/platform/index.js     # 唯一直接识别操作系统的平台策略层
-src/core/*                # 跨平台业务逻辑
+src/platform/index.js     # 唯一直接识别操作系统并选择适配器
+src/platform/windows.js   # DPAPI、PowerShell/CIM、taskkill、client.bat
+src/platform/linux.js     # Secret Service、/proc、loginctl、AT-SPI、client.sh
+src/platform/macos.js     # Keychain/keytar、ps、POSIX 启动入口
+src/platform/shared.js    # 平台实现可复用的底层工具
+src/core/*                # 不含 OS 实现的跨平台业务逻辑
 src/automation/*          # 共用 Java/Python 自动化能力
 src/renderer/*            # 共用 UI
 ```
 
-Windows / Linux 共享账号模型、配置、状态机、日志、数据中心发现和 Java Swing 自动化逻辑；只有启动器、凭据、进程树、窗口能力等操作系统差异由平台适配层控制。
+Windows / Linux 共享账号模型、配置、状态机、日志、数据中心发现和 Java Swing 自动化逻辑。`src/core/*` 不再直接出现 PowerShell、`taskkill`、Secret Service、`/proc` 或 `loginctl`；CI 会扫描并阻止这些 OS 实现重新泄漏回核心层。
 
-这样后续功能只开发一次，不再维护“Windows 一套、Linux 一套”两条容易漂移的主线。
+这样后续业务功能只开发一次；需要修改 Windows/Linux/macOS 行为时，只改对应平台适配器，不再维护多套容易漂移的主线。

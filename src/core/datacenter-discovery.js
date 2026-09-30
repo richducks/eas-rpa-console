@@ -70,11 +70,12 @@ function discoverCachedDataCenters(clientDirectory) {
 }
 
 async function discoverLiveDataCenters(config, assets, dependencies = {}) {
+  const platform = dependencies.platform || currentPlatform;
   if (!assets?.helperJar || !assets?.agentJar || !fs.existsSync(assets.helperJar) || !fs.existsSync(assets.agentJar)) {
     throw Object.assign(new Error('数据中心探测 Agent 不完整'), { code: 'DATACENTER_AGENT_MISSING' });
   }
-  const manager = dependencies.processManager || new ProcessManager();
-  const spec = resolveLaunchSpec(config);
+  const manager = dependencies.processManager || new ProcessManager(platform);
+  const spec = resolveLaunchSpec(config, platform);
   const runId = `discover-${Date.now()}`;
   const record = manager.launch(spec, { runId, accountId: null });
   let javaPid = null;
@@ -85,8 +86,8 @@ async function discoverLiveDataCenters(config, assets, dependencies = {}) {
     javaPid = javaProcess.pid;
     manager.registerOwnedPid(javaPid, { runId, accountId: null });
     const javaHome = path.resolve(spec.workingDirectory, '..', '..', 'clientjdk');
-    const javaExecutable = path.join(javaHome, 'bin', currentPlatform.javaExecutableName);
-    const classPath = [assets.helperJar, path.join(javaHome, 'lib', 'tools.jar')].join(currentPlatform.classPathDelimiter);
+    const javaExecutable = path.join(javaHome, 'bin', platform.javaExecutableName);
+    const classPath = [assets.helperJar, path.join(javaHome, 'lib', 'tools.jar')].join(platform.classPathDelimiter);
     const deadline = Date.now() + 60000;
     let lastError = 'DATACENTER_OPTIONS_EMPTY';
     while (Date.now() < deadline) {
@@ -111,8 +112,9 @@ async function discoverLiveDataCenters(config, assets, dependencies = {}) {
 }
 
 async function discoverDataCenters(config, options = {}) {
+  const platform = options.platform || currentPlatform;
   const configured = config.launcher?.client_directory;
-  const spec = configured ? null : resolveLaunchSpec(config);
+  const spec = configured ? null : resolveLaunchSpec(config, platform);
   const root = spec ? installationRoot(spec) : null;
   const launcher = config.launcher || {};
   const desktopBase = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file).workingDirectory : process.cwd();
@@ -127,7 +129,7 @@ async function discoverDataCenters(config, options = {}) {
   let live = [];
   let liveError = null;
   if (options.helperJar && options.agentJar) {
-    try { live = await (options.liveDiscover || discoverLiveDataCenters)(config, options, options.dependencies); }
+    try { live = await (options.liveDiscover || discoverLiveDataCenters)(config, options, { ...options.dependencies, platform }); }
     catch (error) { liveError = { code: error.code || 'LIVE_DISCOVERY_FAILED', message: error.message }; }
   }
   const saved = Array.isArray(config.ui?.data_centers) ? config.ui.data_centers : [];
@@ -136,7 +138,7 @@ async function discoverDataCenters(config, options = {}) {
   const legacyFallback = live.length ? [] : [...saved, ...accountCenters];
   const dataCenters = [...new Set([...discovered, ...legacyFallback].map(value => String(value || '').trim()).filter(Boolean))];
   if (!dataCenters.length) throw Object.assign(new Error('安装目录中尚无数据中心配置，请确认 EAS 客户端已完成初始化'), { code: 'DATACENTER_CONFIG_NOT_FOUND' });
-  const launcherFile = path.join(clientDirectory, 'bin', currentPlatform.startupScriptName);
+  const launcherFile = path.join(clientDirectory, 'bin', platform.startupScriptName);
   return { dataCenters, windowBackend: live.length ? 'java-swing-agent' : files.length ? 'install-directory' : cached.names.length ? 'client-cache' : 'local-saved-config', clientDirectory, launcherFile, sourceFiles: [...files.map(file => path.relative(clientDirectory, file)), ...cached.sources], liveError };
 }
 

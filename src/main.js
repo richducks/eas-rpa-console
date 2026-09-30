@@ -90,10 +90,11 @@ app.whenReady().then(() => {
   configStore.ensure();
   const javaAssetRoot = app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', 'build', 'java') : path.join(__dirname, '..', 'build', 'java');
   runner = new FoundationRunner({
-    processManager: new ProcessManager(),
+    processManager: new ProcessManager(currentPlatform),
     logger,
     emit: payload => BrowserWindow.getAllWindows().forEach(window => window.webContents.send('task:event', payload)),
-    assets: { helperJar: path.join(javaAssetRoot, 'attach-helper.jar'), agentJar: path.join(javaAssetRoot, 'datacenter-agent.jar') }
+    assets: { helperJar: path.join(javaAssetRoot, 'attach-helper.jar'), agentJar: path.join(javaAssetRoot, 'datacenter-agent.jar') },
+    platform: currentPlatform
   });
 
   ipcMain.handle('environment:get', () => ({
@@ -106,7 +107,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('environment:probe', async () => {
     const config = configStore.load();
-    const result = await probeEnvironment(config);
+    const result = await probeEnvironment(config, { platform: currentPlatform });
     logger.write('INFO', 'ENVIRONMENT_PROBED', {
       run_id: null,
       account_id: null,
@@ -201,7 +202,7 @@ app.whenReady().then(() => {
   ipcMain.handle('task:stop', () => runner.stop());
   ipcMain.handle('datacenters:discover', async () => {
     try {
-      const result = await discoverDataCenters(configStore.load(), { helperJar: path.join(javaAssetRoot, 'attach-helper.jar'), agentJar: path.join(javaAssetRoot, 'datacenter-agent.jar') });
+      const result = await discoverDataCenters(configStore.load(), { helperJar: path.join(javaAssetRoot, 'attach-helper.jar'), agentJar: path.join(javaAssetRoot, 'datacenter-agent.jar'), platform: currentPlatform });
       logger.write('INFO', 'DATACENTERS_DISCOVERED', { run_id: null, account_id: null, stage: 'DISCOVER_DATACENTERS', status: 'COMPLETE', count: result.dataCenters.length, backend: result.windowBackend });
       return { ok: true, ...result };
     } catch (error) {

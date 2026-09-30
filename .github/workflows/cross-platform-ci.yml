@@ -45,3 +45,11 @@ jobs:
             echo "$matches"
             exit 1
           fi
+
+          leaks=$(grep -RIlE 'powershell\.exe|taskkill\.exe|secret-tool|/proc/|loginctl' src/core --include='*.js' || true)
+          if [ -n "$leaks" ]; then
+            echo "OS-specific process/credential/session implementations must stay under src/platform"
+            echo "Found in core:"
+            echo "$leaks"
+            exit 1
+          fi

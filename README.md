@@ -1,6 +1,6 @@
 # EAS 自动登录中心
 
-当前源码版本为 **0.24.1**。这是 EAS Cloud 多账号自动登录控制台。自 0.24.0 起 Windows / Linux 共用同一套业务代码，操作系统差异统一收敛到 `src/platform` 平台适配层；0.24.1 修正了 Windows 下显式启动命令被备用客户端目录错误阻断的问题。
+当前源码版本为 **0.25.0**。这是 EAS Cloud 多账号自动登录控制台。0.25.0 以用户提供并校验过 SHA-256 的 Windows 0.21.2 正式安装包为基准，把 DPAPI、PowerShell/CIM、`taskkill`、Linux Secret Service、`/proc` 和会话探测等 OS 实现彻底下沉到 `src/platform/*`；`src/core/*` 只保留跨平台业务流程。
 
 ![EAS 自动登录中心界面](docs/screenshots/latest-ui.png)
 
@@ -22,10 +22,10 @@
 
 Ubuntu 版本已在本机完成构建：
 
-- Ubuntu 免安装：`dist/EAS-RPA-Console-0.24.1-x86_64.AppImage`
-- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.24.1-amd64.deb`
+- Ubuntu 免安装：`dist/EAS-RPA-Console-0.25.0-x86_64.AppImage`
+- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.25.0-amd64.deb`
 
-Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.24.x 已把 Windows 0.21.2 的 DPAPI、`client.bat`、Windows 进程树和 Java Swing Agent 能力纳入统一主线；Windows 0.24.1 仍应在 Windows 主机原生构建并做一次 EAS 实机登录回归。macOS 目前只复用 POSIX 启动和 Keychain/keytar 基础能力，不宣称已经完成 EAS 实机自动登录验证。
+Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.25.0 保留 Windows 0.21.2 已验证的 DPAPI、`client.bat`、PowerShell/CIM 进程树和 Java Swing Agent 能力，但这些实现已经隔离到 Windows 平台适配器；Linux 使用独立的 Secret Service、`/proc`、X11/AT-SPI 适配器。macOS 保留 POSIX/Keychain 与 `ps` 进程树适配入口，但在完成 EAS 客户端实机验证前仍视为实验支持。
 
 AppImage 可直接双击运行。如当前系统未启用 FUSE，建议安装 `.deb` 包。
 
@@ -49,11 +49,12 @@ npm run build:web
 
 ## 跨平台代码结构
 
-- `src/platform/index.js` 是唯一直接读取 `process.platform` 的位置。
-- `src/core/*` 负责配置、账号、运行状态机、数据中心探测和登录逻辑，只消费平台适配器提供的策略。
+- `src/platform/index.js` 是唯一直接读取 `process.platform` 的位置，并根据系统加载 `windows.js`、`linux.js`、`macos.js` 或 `generic.js`。
+- `src/platform/*` 独占凭据、进程树、停止进程、会话探测、命令探测和启动脚本包装等 OS 实现。
+- `src/core/*` 负责配置、账号、运行状态机、数据中心探测和登录逻辑，只消费平台适配器接口，不直接调用 PowerShell、`taskkill`、Secret Service、`/proc` 或 `loginctl`。
 - Windows：`client.bat` + `cmd.exe`、DPAPI、PowerShell/CIM 进程树、Java Swing Agent。
 - Linux：`client.sh` / `.desktop`、Keyring/Secret Service、`/proc` 进程树、X11/AT-SPI + Java Swing Agent。
-- macOS：保留 Electron 构建和 POSIX/Keychain 适配入口，但在完成 EAS 客户端实机验证前视为实验支持。
+- macOS：POSIX 启动、Keychain/keytar、`ps` 进程树适配入口；EAS 自动登录仍需实机验收。
 
 ## 当前能力
 
@@ -77,7 +78,7 @@ Linux 密码通过系统 Keyring/Secret Service 读取；Windows 密码使用当
 
 ## 历史版本
 
-已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 引入跨平台适配层，`v0.24.1` 为通过三平台 CI 修正后的当前主线。
+已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 引入第一版跨平台适配层，`v0.24.1` 修正 Windows 启动配置优先级，`v0.25.0` 将凭据、进程与环境实现进一步从 core 完整抽离到平台适配器。
 
 恢复版本的证据、分支设计和本地发布包归档位置见 [`docs/RECOVERED_HISTORY.md`](docs/RECOVERED_HISTORY.md)。
 

@@ -16,7 +16,7 @@ function resolveClientDirectory(config, baseDirectory = process.cwd()) {
   return chosen;
 }
 
-function resolveLaunchSpec(config) {
+function resolveLaunchSpec(config, platform = currentPlatform) {
   const launcher = config.launcher || {};
   if (Array.isArray(launcher.command) && launcher.command.length) {
     if (launcher.command.some(item => typeof item !== 'string' || !item)) throw new Error('launcher.command 必须是非空字符串数组');
@@ -30,9 +30,9 @@ function resolveLaunchSpec(config) {
   const desktop = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file) : null;
   const clientDirectory = resolveClientDirectory(config, launcher.working_directory || desktop?.workingDirectory || process.cwd());
   if (clientDirectory) {
-    const startupScript = path.join(clientDirectory, 'bin', currentPlatform.startupScriptName);
+    const startupScript = path.join(clientDirectory, 'bin', platform.startupScriptName);
     if (!fs.existsSync(startupScript)) throw new Error(`所选 EAS 客户端目录缺少启动文件：${startupScript}`);
-    const wrapped = currentPlatform.wrapStartupScript(startupScript);
+    const wrapped = platform.wrapStartupScript(startupScript);
     return { ...wrapped, workingDirectory: path.dirname(startupScript), source: startupScript };
   }
   if (!desktop) throw new Error('EAS Desktop 启动器不存在');

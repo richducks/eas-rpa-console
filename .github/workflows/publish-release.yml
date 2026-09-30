@@ -6,7 +6,7 @@ on:
       tag:
         description: Git tag to build and publish
         required: true
-        default: v0.24.1
+        default: v0.25.0
 
 permissions:
   contents: write

@@ -30,6 +30,7 @@ artifacts/recovered-releases/
 | 0.23.0 | 当前 Linux/Windows 合并主线 | 原有 `v0.23.0` |
 | 0.24.0 | Windows / Linux 共用平台适配层的当前主线 | `v0.24.0` |
 | 0.24.1 | 三平台 CI 验证后的配置优先级修正版 | `v0.24.1` |
+| 0.25.0 | Windows 0.21.2 正式安装包复核后的平台实现彻底隔离版本 | `v0.25.0` |
 
 历史迁移记录曾说明 0.1.0–0.12.0 的旧发布包在 2026-09-25 被移入系统回收站；本次重新扫描时这些文件已经不在当前回收站和 `CodexProjects` 目录中，因此没有伪造或补造这些版本。
 
@@ -51,6 +52,7 @@ artifacts/recovered-releases/
 
 - 从 0.20.0 Deb 恢复出的整个 `src/` 与 GitHub 原有 `v0.20.0` 的 `src/` 完全一致。打包后的 `package.json` 只比开发仓库版本少 Electron Builder 自动裁剪掉的 `scripts`、`devDependencies` 和 `build` 字段。
 - 0.19.0 Windows Setup 与同版本 Linux Deb 分别解包后，`src/`、`build/java/` 和运行时 `package.json` 完全一致；归一化源码树哈希相同。
+- 用户再次提供的 `EAS-RPA-Console-0.21.2-Setup-x64.exe` SHA-256 为 `a6e089791e1703bb91f631716d9e604dc7472f44df39e228247e2857eec4c26d`，与本机原 Windows 安装包逐字节一致；其 `app.asar` 运行时代码与 `history/windows-0.21.2` 的核心代码一致，历史分支仅额外保留开发期 `src/web-marker` 和 Java 编译输出。
 
 这证明恢复出的版本属于同一个跨平台 EAS RPA 项目，而不是另一套 Linux 工程。
 
@@ -58,7 +60,7 @@ artifacts/recovered-releases/
 
 ### `main`
 
-当前可维护主线为 0.24.1。历史 `v0.23.0` 与 `v0.24.0` 均保持不变；0.24.0 引入统一平台适配层，0.24.1 修正 Windows CI 暴露出的启动配置优先级问题。
+当前可维护主线为 0.25.0。历史 `v0.23.0`、`v0.24.0`、`v0.24.1` 均保持不变；0.25.0 在正式 Windows 0.21.2 安装包静态校验基础上，把凭据、进程树、停止进程和会话探测等 OS 实现全部收敛到 `src/platform/*`。
 
 ### `history/recovered-release-snapshots`
 
