@@ -54,5 +54,7 @@ docs/screenshots/v0.27.0/narrow.png
 - [x] 9 个现有账号与 7 个现有数据中心未丢失。
 - [x] `config.yaml.pre-multi-client.bak` 存在。
 - [x] GitHub Ubuntu / Windows / macOS CI 全绿。
-- [ ] GitHub Release 原生生成 Deb / AppImage / Windows EXE 与 SHA256。
-- [ ] 本机最终安装 GitHub 正式 Deb，而非临时本地包。
+- [x] GitHub Release 原生生成 Deb / AppImage / Windows EXE 与 SHA256。
+- [x] 本机最终安装 GitHub 正式 Deb，而非临时本地包。
+- [x] 正式 Deb SHA-256：`555ef6cb1caf417e2d06698e27ace38e568f340a3867906b35974adca1ca2cfe`。
+- [x] 正式 Windows EXE SHA-256：`b963d29de97453c50564e10640a4ec22dd05b1b6cb8204b2fc1ebefc3a6f6e0f`。
