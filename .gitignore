@@ -1,0 +1,8 @@
+node_modules/
+dist/
+logs/
+artifacts/
+config.yaml
+*.log
+.env
+
