@@ -54,7 +54,7 @@ function createWindow() {
     minHeight: 280,
     resizable: true,
     title: 'EAS 自动登录中心',
-    backgroundColor: '#f4f7fb',
+    backgroundColor: '#eef1f5',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -72,6 +72,7 @@ function createWindow() {
     win.webContents.once('did-finish-load', async () => {
       await new Promise(resolve => setTimeout(resolve, 800));
       if (process.env.EAS_RPA_SCREENSHOT_PAGE === 'credentials') await win.webContents.executeJavaScript("goTo('credentials')");
+      if (process.env.EAS_RPA_SCREENSHOT_THEME === 'dark') await win.webContents.executeJavaScript("document.body.classList.add('dark')");
       await new Promise(resolve => setTimeout(resolve, 200));
       const image = await win.webContents.capturePage();
       fs.writeFileSync(process.env.EAS_RPA_SCREENSHOT, image.toPNG());
@@ -213,14 +214,14 @@ app.whenReady().then(() => {
       title: '选择 EAS Cloud 启动器',
       properties: ['openFile'],
       filters: [
-        { name: 'Desktop 启动器', extensions: ['desktop'] },
+        { name: process.platform === 'win32' ? 'Windows 启动器' : 'Desktop 启动器', extensions: process.platform === 'win32' ? ['bat', 'cmd', 'exe'] : ['desktop'] },
         { name: '全部文件', extensions: ['*'] }
       ]
     });
     return result.canceled ? null : result.filePaths[0];
   });
   ipcMain.handle('client-directory:pick', async () => {
-    const result = await dialog.showOpenDialog({ title: '选择 EAS 根目录或 client 目录', properties: ['openDirectory'] });
+    const result = await dialog.showOpenDialog({ title: '选择 EAS 根目录、client 目录或 bin 目录', properties: ['openDirectory'] });
     return result.canceled ? null : result.filePaths[0];
   });
 

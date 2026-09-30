@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
     max_instances: null
   },
   launcher: {
-    desktop_file: '/opt/Kingdee/EASCloud.desktop',
+    desktop_file: process.platform === 'win32' ? null : '/opt/Kingdee/EASCloud.desktop',
     command: null,
     working_directory: null,
     client_directory: null

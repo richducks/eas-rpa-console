@@ -51,7 +51,7 @@ class FoundationRunner {
       this.active.pid = record.pid;
       this.event(runId, account.id, 'WAIT_PROCESS', 'RUNNING', { pid: record.pid });
       await this.processManager.waitUntilAlive(record, 3000);
-      const javaProcess = await this.processManager.waitForDescendant(record.pid, row => /\/java(?:\s|$)/.test(row.command) && row.command.includes('com.kingdee.eas'), 15000);
+      const javaProcess = await this.processManager.waitForDescendant(record.pid, row => /(?:^|[\\/])javaw?(?:\.exe)?(?:\s|$)/i.test(row.command) && row.command.includes('com.kingdee.eas'), 15000);
       const javaRecord = this.processManager.registerOwnedPid(javaProcess.pid, { runId, accountId: account.id });
       this.active.pid = javaRecord.pid;
       this.event(runId, account.id, 'WAIT_LOGIN_WINDOW', 'RUNNING', { pid: javaRecord.pid });
@@ -81,6 +81,7 @@ class FoundationRunner {
       this.ready.push({ runId, pid: javaRecord.pid, accountId: account.id });
       return this.event(runId, account.id, 'SUCCESS', 'SUCCESS', { pid: javaRecord.pid, backend: automation.backend, elapsedMs: Date.now() - startedAt, message: '自动登录成功' });
     } catch (error) {
+      if (this.active?.pid) this.processManager.stopOwned(this.active.pid, runId);
       return this.event(runId, currentAccountId, error.code === 'TASK_CANCELLED' ? 'STOPPED' : 'FAILED', error.code === 'TASK_CANCELLED' ? 'STOPPED' : 'FAILED', { pid: this.active?.pid, errorCode: error.code || 'UNEXPECTED_ERROR', message: error.message, elapsedMs: Date.now() - startedAt });
     } finally {
       this.active = null;

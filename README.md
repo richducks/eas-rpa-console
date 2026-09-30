@@ -1,6 +1,6 @@
 # EAS 自动登录中心
 
-当前版本为 **0.20.0**。这是根据 `eascloud-ubuntu-rpa` Skill 开发的 Electron 控制台，用于 EAS Cloud 多账号任务、运行环境检测、Keyring 凭据管理和安全的客户端启动。
+当前源码版本为 **0.23.0**。这是根据 `eascloud-ubuntu-rpa` Skill 开发的 Electron 控制台，用于 EAS Cloud 多账号任务、运行环境检测、系统凭据管理和安全的客户端启动。
 
 ![EAS 自动登录中心界面](docs/screenshots/latest-ui.png)
 
@@ -14,13 +14,17 @@
 | `build` | 图标、Java 辅助工具和构建资源 |
 | `skill/eascloud-ubuntu-rpa` | EAS Cloud Ubuntu RPA Skill |
 | `docs/screenshots` | 当前界面截图 |
+| `docs/PROJECT_MIGRATION.md` | 从原 `kingdee-eas` 工作区迁移到独立仓库的版本整理说明 |
 | `dist` | 构建产物；仅分发已验证的对应平台版本 |
 
-## 发布包与个人配置
+## 最新发布包
 
-公开仓库不包含 `dist/`、`node_modules/`、运行日志、`config.yaml` 或真实凭据。使用者执行 `npm ci` 后可按下方命令自行构建。复制 `config.example.yaml` 为本机配置，并在界面或系统 Keyring 中录入自己的账号和密码。
+Ubuntu 版本已在本机完成构建：
 
-Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入 Linux 二进制文件。macOS 的 DMG 还需要在 macOS 上制作并签名/公证，才能避免 Gatekeeper 阻拦。当前自动登录的窗口控制也主要面向 Ubuntu，Windows/macOS 自动登录尚未完成适配与实机验证。
+- Ubuntu 免安装：`dist/EAS-RPA-Console-0.23.0-x86_64.AppImage`
+- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.23.0-amd64.deb`
+
+Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入 Linux 二进制文件。macOS 的 DMG 还需要在 macOS 上制作并签名/公证，才能避免 Gatekeeper 阻拦。2026-09-29 已将 Windows 实机测试得到的启动、进程树、Java Swing Agent 登录、DPAPI 凭据和数据中心探测能力合并回主线；当前 `0.23.0` Windows 安装包仍应在 Windows 主机重新构建并回归验证后再分发。
 
 AppImage 可直接双击运行。如当前系统未启用 FUSE，建议安装 `.deb` 包。
 
@@ -46,10 +50,10 @@ npm run build:web
 
 - 运行中心与串行登录任务。
 - 账号启用、停用与添加。
-- X11/Wayland、窗口工具、AT-SPI、Secret Service 和启动器的真实探测。
-- `.desktop` 的 `Exec=` 安全解析及自动化能力矩阵。
+- Linux X11/Wayland 与 Windows 会话、窗口工具、AT-SPI、Secret Service/DPAPI 和启动器的真实探测。
+- Linux `.desktop` 与 Windows `client.bat` 启动路径解析及自动化能力矩阵。
 - 启动器、超时和失败策略的 YAML 持久化。
-- Keyring 凭据引用检查、写入和更新，不在界面或日志中保存明文密码。
+- Linux 使用 Keyring/Secret Service，Windows 使用当前用户 DPAPI 加密凭据；配置和日志不保存明文密码。
 - 以参数数组启动客户端，不经过 shell 或桌面图标双击。
 - 按 run ID、账号 ID 和 PID 记录任务创建的进程。
 - 使用 PID、窗口标题和 AT-SPI 识别登录窗口。
@@ -58,7 +62,7 @@ npm run build:web
 
 ## 安全说明
 
-密码只通过系统 Keyring/Secret Service 读取。配置、日志及界面中不保存明文密码。
+Linux 密码通过系统 Keyring/Secret Service 读取；Windows 密码使用当前用户作用域的 DPAPI 加密存储。配置、日志及界面中不保存明文密码。
 
 运行时配置与日志通常位于 `~/.config/eascloud-rpa-console/`。仓库中的 `config.example.yaml` 仅含虚构示例。
 

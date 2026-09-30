@@ -63,6 +63,7 @@ async function findWithAtspi(pid, expectedTitle) {
 }
 
 async function findLoginWindow({ pid, title, sessionType, tools }) {
+  if (process.platform === 'win32' || sessionType === 'windows') return { id: null, pid: Number(pid), title: title || '', backend: 'java-swing-agent' };
   if (sessionType === 'x11' && tools.wmctrl) {
     try { const match = await findWithWmctrl(pid, title); if (match) return match; } catch { /* try accessibility */ }
   }

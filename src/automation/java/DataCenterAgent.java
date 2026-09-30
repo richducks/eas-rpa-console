@@ -15,6 +15,7 @@ import java.util.List;
 import javax.swing.JComboBox;
 import javax.swing.AbstractButton;
 import javax.swing.JPasswordField;
+import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
@@ -26,6 +27,7 @@ public final class DataCenterAgent {
                     try {
                         List<String> lines = Files.exists(Paths.get(outputPath)) ? Files.readAllLines(Paths.get(outputPath), StandardCharsets.UTF_8) : new ArrayList<String>();
                         if (!lines.isEmpty() && "LOGIN".equals(lines.get(0))) login(lines);
+                        else if (!lines.isEmpty() && "VERIFY_LOGIN".equals(lines.get(0))) verifyLogin(lines);
                         else writeOptions(outputPath);
                     } catch (Exception error) { writeError(outputPath, error.getClass().getSimpleName()); }
                 }
@@ -108,6 +110,37 @@ public final class DataCenterAgent {
         return found;
     }
 
+    private static void collectText(Component component, StringBuilder text) {
+        if (!component.isVisible()) return;
+        if (component instanceof JLabel) text.append(' ').append(((JLabel) component).getText());
+        if (component instanceof AbstractButton) text.append(' ').append(((AbstractButton) component).getText());
+        if (component instanceof Container) for (Component child : ((Container) component).getComponents()) collectText(child, text);
+    }
+
+    private static void verifyLogin(List<String> lines) {
+        String outputPath = decode(lines.get(1));
+        try {
+            JPasswordField passwordField = null;
+            boolean loginButtonVisible = false;
+            StringBuilder visibleText = new StringBuilder();
+            for (Window window : Window.getWindows()) if (window.isShowing()) {
+                passwordField = findPassword(window, passwordField);
+                List<AbstractButton> buttons = new ArrayList<AbstractButton>();
+                collectLogin(window, new ArrayList<JComboBox<?>>(), new ArrayList<JTextField>(), buttons);
+                for (AbstractButton button : buttons) if (button.isEnabled() && button.getText() != null && button.getText().contains("登录")) loginButtonVisible = true;
+                collectText(window, visibleText);
+            }
+            String text = visibleText.toString();
+            if (text.contains("密码错误") || text.contains("密码不正确") || text.contains("用户名或密码") || text.contains("登录失败") || text.contains("认证失败")) {
+                writeError(outputPath, "LOGIN_REJECTED");
+            } else if (passwordField != null && passwordField.isVisible() && loginButtonVisible) {
+                writeLine(outputPath, "LOGIN_PENDING");
+            } else {
+                writeLine(outputPath, "LOGIN_SUCCEEDED");
+            }
+        } catch (Exception error) { writeError(outputPath, error.getClass().getSimpleName()); }
+    }
+
     private static void collect(Component component, List<JComboBox<?>> combos) {
         if (component instanceof JComboBox) combos.add((JComboBox<?>) component);
         if (component instanceof Container) {
@@ -140,7 +173,11 @@ public final class DataCenterAgent {
     }
 
     private static void writeError(String outputPath, String message) {
-        try { PrintWriter writer = new PrintWriter(outputPath, "UTF-8"); writer.println("ERROR:" + message); writer.close(); }
+        writeLine(outputPath, "ERROR:" + message);
+    }
+
+    private static void writeLine(String outputPath, String message) {
+        try { PrintWriter writer = new PrintWriter(outputPath, "UTF-8"); writer.println(message); writer.close(); }
         catch (Exception ignored) { }
     }
 }

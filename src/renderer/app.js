@@ -178,7 +178,7 @@ async function saveAccountRow(event) {
   account.name = username;
   account.enabled = data.get('enabled') === 'on';
   const button = form.querySelector('.row-save');
-  button.disabled = true; button.textContent = '…';
+  button.disabled = true; button.innerHTML = '<span class="action-symbol">…</span><span class="action-label">读取中</span>';
   const saved = await persistConfig();
   if (!saved.valid) {
     Object.assign(account, previous);
@@ -495,7 +495,7 @@ async function refreshDatacenters() {
   button.disabled = true; button.textContent = '…';
   $('#datacenter-source').textContent = '正在读取客户端目录…';
   const result = await window.easDesktop.discoverDataCenters();
-  button.disabled = false; button.textContent = '↻';
+  button.disabled = false; button.innerHTML = '<span class="action-symbol">↻</span><span class="action-label">刷新</span>';
   if (!result.ok) {
     $('#datacenter-source').textContent = '本地配置读取失败';
     if (result.code === 'DATACENTER_CONFIG_NOT_FOUND') {

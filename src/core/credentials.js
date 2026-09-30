@@ -1,10 +1,59 @@
 const { spawn } = require('child_process');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+const crypto = require('crypto');
+
+function windowsCredentialPath(service, key) {
+  const root = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  const name = crypto.createHash('sha256').update(`${service}\0${key}`).digest('hex');
+  return path.join(root, 'eascloud-rpa-console', 'credentials', `${name}.bin`);
+}
+
+function runPowerShell(script, input = null, environment = {}) {
+  return new Promise(resolve => {
+    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+      env: { ...process.env, ...environment }
+    });
+    let output = '';
+    let errorOutput = '';
+    child.stdout.on('data', chunk => { output += chunk.toString('utf8'); });
+    child.stderr.on('data', chunk => { errorOutput += chunk.toString('utf8'); });
+    child.once('error', error => resolve({ ok: false, output: '', error: error.code || 'POWERSHELL_START_FAILED' }));
+    child.once('exit', code => resolve({ ok: code === 0, output, error: code === 0 ? null : errorOutput.trim() }));
+    child.stdin.on('error', () => {});
+    child.stdin.end(input == null ? '' : input);
+  });
+}
+
+async function getWindowsCredential(service, key) {
+  const file = windowsCredentialPath(service, key);
+  if (!fs.existsSync(file)) return { available: false, code: 'CREDENTIAL_MISSING' };
+  const script = 'Add-Type -AssemblyName System.Security;$b=[IO.File]::ReadAllBytes($env:EAS_RPA_CREDENTIAL_FILE);$p=[Security.Cryptography.ProtectedData]::Unprotect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[Console]::Out.Write([Text.Encoding]::UTF8.GetString($p))';
+  const result = await runPowerShell(script, null, { EAS_RPA_CREDENTIAL_FILE: file });
+  return result.ok ? { available: true, password: result.output, backend: 'windows-dpapi' } : { available: false, code: 'CREDENTIAL_READ_FAILED' };
+}
+
+async function storeWindowsCredential(service, key, password) {
+  const file = windowsCredentialPath(service, key);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const script = 'Add-Type -AssemblyName System.Security;$s=[Console]::In.ReadToEnd();$b=[Text.Encoding]::UTF8.GetBytes($s);$p=[Security.Cryptography.ProtectedData]::Protect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[IO.File]::WriteAllBytes($env:EAS_RPA_CREDENTIAL_FILE,$p)';
+  const result = await runPowerShell(script, password, { EAS_RPA_CREDENTIAL_FILE: file });
+  return { stored: result.ok, code: result.ok ? 'CREDENTIAL_STORED' : 'CREDENTIAL_STORE_FAILED', backend: 'windows-dpapi' };
+}
 
 function loadKeytar() {
   try { return require('keytar'); } catch { return null; }
 }
 
 async function checkCredentialReference(service, key) {
+  if (process.platform === 'win32') {
+    const result = await getWindowsCredential(service, key);
+    if (result.available) result.password = null;
+    return result;
+  }
   const keytar = loadKeytar();
   if (keytar) {
     try {
@@ -21,6 +70,7 @@ async function checkCredentialReference(service, key) {
 }
 
 async function getCredential(service, key) {
+  if (process.platform === 'win32') return getWindowsCredential(service, key);
   const keytar = loadKeytar();
   if (keytar) {
     try {
@@ -42,6 +92,7 @@ async function getCredential(service, key) {
 
 async function storeCredential(service, key, password, label = 'EAS RPA credential') {
   if (typeof password !== 'string' || !password.length) return { stored: false, code: 'PASSWORD_REQUIRED' };
+  if (process.platform === 'win32') return storeWindowsCredential(service, key, password);
   const keytar = loadKeytar();
   if (keytar) {
     try {
@@ -62,6 +113,12 @@ async function storeCredential(service, key, password, label = 'EAS RPA credenti
 }
 
 async function deleteCredential(service, key) {
+  if (process.platform === 'win32') {
+    const file = windowsCredentialPath(service, key);
+    if (!fs.existsSync(file)) return { deleted: false, code: 'CREDENTIAL_MISSING' };
+    try { fs.unlinkSync(file); return { deleted: true, code: 'CREDENTIAL_DELETED' }; }
+    catch { return { deleted: false, code: 'CREDENTIAL_DELETE_FAILED' }; }
+  }
   const keytar = loadKeytar();
   if (keytar) {
     try { return { deleted: await keytar.deletePassword(service, key), code: 'CREDENTIAL_DELETED' }; }
