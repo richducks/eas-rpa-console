@@ -3,7 +3,8 @@ const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
-const { findLoginWindow } = require('./windows');
+const { findLoginWindow } = require('./windowing');
+const { currentPlatform } = require('../platform');
 
 const execFileAsync = promisify(execFile);
 const encode = value => Buffer.from(String(value), 'utf8').toString('base64');
@@ -18,14 +19,14 @@ const TRANSIENT_FORM_ERRORS = new Set([
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 async function automateLogin({ pid, account, password, spec, environment, config, helperJar, agentJar, isCancelled, attachHelper = execFileAsync, wait = sleep }) {
-  const isWindows = process.platform === 'win32' || environment?.session?.type === 'windows';
+  const isWindows = currentPlatform.isWindows || environment?.session?.type === 'windows';
   const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'eas-rpa-login-'));
   const controlPath = path.join(temporaryDirectory, 'control.txt');
   const outputPath = path.join(temporaryDirectory, 'result.txt');
   try {
     const javaHome = path.resolve(spec.workingDirectory, '..', '..', 'clientjdk');
-    const javaExecutable = path.join(javaHome, 'bin', isWindows ? 'java.exe' : 'java');
-    const classPath = [helperJar, path.join(javaHome, 'lib', 'tools.jar')].join(isWindows ? ';' : path.delimiter);
+    const javaExecutable = path.join(javaHome, 'bin', isWindows ? 'java.exe' : currentPlatform.javaExecutableName);
+    const classPath = [helperJar, path.join(javaHome, 'lib', 'tools.jar')].join(isWindows ? ';' : currentPlatform.classPathDelimiter);
     const deadline = Date.now() + config.global.startup_timeout_seconds * 1000;
     let errorCode = 'LOGIN_AUTOMATION_FAILED';
     while (Date.now() < deadline) {

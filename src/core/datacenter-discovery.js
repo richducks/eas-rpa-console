@@ -6,6 +6,7 @@ const { promisify } = require('util');
 const { resolveLaunchSpec, resolveClientDirectory } = require('./launcher');
 const { parseDesktopFile } = require('./desktop-file');
 const { ProcessManager } = require('./process-manager');
+const { currentPlatform } = require('../platform');
 
 const execFileAsync = promisify(execFile);
 
@@ -84,8 +85,8 @@ async function discoverLiveDataCenters(config, assets, dependencies = {}) {
     javaPid = javaProcess.pid;
     manager.registerOwnedPid(javaPid, { runId, accountId: null });
     const javaHome = path.resolve(spec.workingDirectory, '..', '..', 'clientjdk');
-    const javaExecutable = path.join(javaHome, 'bin', process.platform === 'win32' ? 'java.exe' : 'java');
-    const classPath = [assets.helperJar, path.join(javaHome, 'lib', 'tools.jar')].join(path.delimiter);
+    const javaExecutable = path.join(javaHome, 'bin', currentPlatform.javaExecutableName);
+    const classPath = [assets.helperJar, path.join(javaHome, 'lib', 'tools.jar')].join(currentPlatform.classPathDelimiter);
     const deadline = Date.now() + 60000;
     let lastError = 'DATACENTER_OPTIONS_EMPTY';
     while (Date.now() < deadline) {
@@ -135,7 +136,7 @@ async function discoverDataCenters(config, options = {}) {
   const legacyFallback = live.length ? [] : [...saved, ...accountCenters];
   const dataCenters = [...new Set([...discovered, ...legacyFallback].map(value => String(value || '').trim()).filter(Boolean))];
   if (!dataCenters.length) throw Object.assign(new Error('安装目录中尚无数据中心配置，请确认 EAS 客户端已完成初始化'), { code: 'DATACENTER_CONFIG_NOT_FOUND' });
-  const launcherFile = path.join(clientDirectory, 'bin', process.platform === 'win32' ? 'client.bat' : 'client.sh');
+  const launcherFile = path.join(clientDirectory, 'bin', currentPlatform.startupScriptName);
   return { dataCenters, windowBackend: live.length ? 'java-swing-agent' : files.length ? 'install-directory' : cached.names.length ? 'client-cache' : 'local-saved-config', clientDirectory, launcherFile, sourceFiles: [...files.map(file => path.relative(clientDirectory, file)), ...cached.sources], liveError };
 }
 

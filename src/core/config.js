@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
+const { currentPlatform } = require('../platform');
 
 const ALLOWED_BACKENDS = new Set(['atspi', 'keyboard', 'image']);
 
@@ -15,10 +16,10 @@ const DEFAULT_CONFIG = {
     max_instances: null
   },
   launcher: {
-    desktop_file: process.platform === 'win32' ? null : '/opt/Kingdee/EASCloud.desktop',
+    desktop_file: currentPlatform.defaultDesktopFile,
     command: null,
     working_directory: null,
-    client_directory: null
+    client_directory: currentPlatform.defaultClientDirectory
   },
   ui: {
     login_window_title: '金蝶EAS Cloud系统登录',
@@ -70,7 +71,7 @@ function validateConfig(config, options = {}) {
   const desktopFile = config.launcher?.desktop_file;
   const command = config.launcher?.command;
   const clientDirectory = config.launcher?.client_directory;
-  if (!desktopFile && !command && !clientDirectory) errors.push('请指定 Desktop 启动器、启动命令或 EAS 客户端目录');
+  if (options.checkPaths && !desktopFile && !command && !clientDirectory) errors.push('请指定 Desktop 启动器、启动命令或 EAS 客户端目录');
   if (options.checkPaths && desktopFile && !command && !clientDirectory && !fs.existsSync(desktopFile)) errors.push(`启动器文件不存在：${desktopFile}`);
   if (clientDirectory != null && (typeof clientDirectory !== 'string' || !clientDirectory.trim())) errors.push('launcher.client_directory 必须为空或有效路径');
   if (options.checkPaths && clientDirectory) {

@@ -6,6 +6,7 @@ const path = require('node:path');
 const { DEFAULT_CONFIG, validateConfig } = require('../src/core/config');
 const { resolveLaunchSpec } = require('../src/core/launcher');
 const { discoverDataCenters } = require('../src/core/datacenter-discovery');
+const { currentPlatform } = require('../src/platform');
 
 test('复制的 EAS 目录可在没有 Desktop 启动器时读取数据中心并定位启动文件', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'eas-copied-client-'));
@@ -24,7 +25,7 @@ test('复制的 EAS 目录可在没有 Desktop 启动器时读取数据中心并
   const discovered = await discoverDataCenters(config);
   assert.deepEqual(discovered.dataCenters, ['演示中心']);
   assert.equal(discovered.clientDirectory, client);
-  const expectedLauncher = path.join(client, 'bin', process.platform === 'win32' ? 'client.bat' : 'client.sh');
+  const expectedLauncher = path.join(client, 'bin', currentPlatform.startupScriptName);
   assert.equal(resolveLaunchSpec(config).args.includes(expectedLauncher), true);
   assert.equal(validateConfig(config, { checkPaths: true }).valid, true);
 

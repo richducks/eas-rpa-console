@@ -1,8 +1,9 @@
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
+const { currentPlatform } = require('../platform');
 
 class ProcessManager {
-  constructor() { this.owned = new Map(); }
+  constructor(platform = currentPlatform) { this.owned = new Map(); this.platform = platform; }
 
   launch(spec, context = {}) {
     const child = spawn(spec.executable, spec.args, {
@@ -44,7 +45,7 @@ class ProcessManager {
     const record = this.owned.get(pid);
     if (!record || record.runId !== runId) return { stopped: false, code: 'PROCESS_NOT_OWNED' };
     if (record.exited) return { stopped: true, code: 'PROCESS_ALREADY_EXITED' };
-    if (process.platform === 'win32') {
+    if (this.platform.isWindows) {
       try { execFileSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, timeout: 5000 }); }
       catch { return { stopped: false, code: 'PROCESS_STOP_FAILED' }; }
     } else if (record.child) record.child.kill('SIGTERM');
@@ -59,7 +60,7 @@ class ProcessManager {
   }
 
   descendants(rootPid) {
-    if (process.platform === 'win32') return this.windowsDescendants(rootPid);
+    if (this.platform.isWindows) return this.windowsDescendants(rootPid);
     const rows = [];
     for (const name of fs.readdirSync('/proc')) {
       if (!/^\d+$/.test(name)) continue;

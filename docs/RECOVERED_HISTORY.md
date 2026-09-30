@@ -28,6 +28,7 @@ artifacts/recovered-releases/
 | 0.21.2 | 2026-09-29 Windows 实机测试完整工作区快照 | `v0.21.2-windows-test` |
 | 0.22.0 | Deb、AppImage | `v0.22.0` |
 | 0.23.0 | 当前 Linux/Windows 合并主线 | 原有 `v0.23.0` |
+| 0.24.0 | Windows / Linux 共用平台适配层的当前主线 | `v0.24.0` |
 
 历史迁移记录曾说明 0.1.0–0.12.0 的旧发布包在 2026-09-25 被移入系统回收站；本次重新扫描时这些文件已经不在当前回收站和 `CodexProjects` 目录中，因此没有伪造或补造这些版本。
 
@@ -56,7 +57,7 @@ artifacts/recovered-releases/
 
 ### `main`
 
-当前可维护主线。`v0.23.0` 保持不变。
+当前可维护主线为 0.24.0。历史 `v0.23.0` 保持不变；0.24.0 在其上增加统一平台适配层，不改写恢复历史。
 
 ### `history/recovered-release-snapshots`
 

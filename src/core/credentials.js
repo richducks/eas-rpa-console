@@ -3,6 +3,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
+const { currentPlatform } = require('../platform');
 
 function windowsCredentialPath(service, key) {
   const root = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
@@ -49,7 +50,7 @@ function loadKeytar() {
 }
 
 async function checkCredentialReference(service, key) {
-  if (process.platform === 'win32') {
+  if (currentPlatform.isWindows) {
     const result = await getWindowsCredential(service, key);
     if (result.available) result.password = null;
     return result;
@@ -61,6 +62,7 @@ async function checkCredentialReference(service, key) {
       return { available: credential !== null, code: credential !== null ? 'CREDENTIAL_AVAILABLE' : 'CREDENTIAL_MISSING', backend: 'keytar' };
     } catch { /* use command fallback when the native backend cannot connect */ }
   }
+  if (!currentPlatform.isLinux) return { available: false, code: 'KEYRING_UNAVAILABLE' };
   return new Promise(resolve => {
     const child = spawn('secret-tool', ['lookup', 'service', service, 'account', key], { stdio: 'ignore' });
     const timer = setTimeout(() => { child.kill('SIGTERM'); resolve({ available: false, code: 'CREDENTIAL_CHECK_TIMEOUT' }); }, 5000);
@@ -70,7 +72,7 @@ async function checkCredentialReference(service, key) {
 }
 
 async function getCredential(service, key) {
-  if (process.platform === 'win32') return getWindowsCredential(service, key);
+  if (currentPlatform.isWindows) return getWindowsCredential(service, key);
   const keytar = loadKeytar();
   if (keytar) {
     try {
@@ -78,6 +80,7 @@ async function getCredential(service, key) {
       return password === null ? { available: false, code: 'CREDENTIAL_MISSING' } : { available: true, password, backend: 'keytar' };
     } catch { /* use command fallback */ }
   }
+  if (!currentPlatform.isLinux) return { available: false, code: 'KEYRING_UNAVAILABLE' };
   return new Promise(resolve => {
     const child = spawn('secret-tool', ['lookup', 'service', service, 'account', key], { stdio: ['ignore', 'pipe', 'ignore'] });
     let output = '';
@@ -92,7 +95,7 @@ async function getCredential(service, key) {
 
 async function storeCredential(service, key, password, label = 'EAS RPA credential') {
   if (typeof password !== 'string' || !password.length) return { stored: false, code: 'PASSWORD_REQUIRED' };
-  if (process.platform === 'win32') return storeWindowsCredential(service, key, password);
+  if (currentPlatform.isWindows) return storeWindowsCredential(service, key, password);
   const keytar = loadKeytar();
   if (keytar) {
     try {
@@ -100,6 +103,7 @@ async function storeCredential(service, key, password, label = 'EAS RPA credenti
       return { stored: true, code: 'CREDENTIAL_STORED', backend: 'keytar' };
     } catch { /* use command fallback when the native backend cannot connect */ }
   }
+  if (!currentPlatform.isLinux) return { stored: false, code: 'KEYRING_UNAVAILABLE' };
   return new Promise(resolve => {
     const child = spawn('secret-tool', ['store', `--label=${label}`, 'service', service, 'account', key], { stdio: ['pipe', 'ignore', 'ignore'] });
     let settled = false;
@@ -113,7 +117,7 @@ async function storeCredential(service, key, password, label = 'EAS RPA credenti
 }
 
 async function deleteCredential(service, key) {
-  if (process.platform === 'win32') {
+  if (currentPlatform.isWindows) {
     const file = windowsCredentialPath(service, key);
     if (!fs.existsSync(file)) return { deleted: false, code: 'CREDENTIAL_MISSING' };
     try { fs.unlinkSync(file); return { deleted: true, code: 'CREDENTIAL_DELETED' }; }

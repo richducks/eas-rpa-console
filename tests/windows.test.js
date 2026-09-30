@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseWmctrl, waitForLoginWindow } = require('../src/core/windows');
+const { parseWmctrl, waitForLoginWindow } = require('../src/core/windowing');
 
 test('只匹配属于目标 PID 且标题正确的窗口', () => {
   const output = '0x01  0  120 host 其他窗口\n0x02  0  456 host 金蝶EAS Cloud系统登录\n';

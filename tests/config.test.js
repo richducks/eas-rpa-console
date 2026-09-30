@@ -8,6 +8,17 @@ test('默认配置有效', () => {
   assert.equal(validateConfig(copy()).valid, true);
 });
 
+test('首次启动允许尚未选择客户端，执行任务时再要求启动器', () => {
+  const config = copy();
+  config.launcher.desktop_file = null;
+  config.launcher.command = null;
+  config.launcher.client_directory = null;
+  assert.equal(validateConfig(config).valid, true);
+  const strict = validateConfig(config, { checkPaths: true });
+  assert.equal(strict.valid, false);
+  assert.match(strict.errors.join(' '), /请指定/);
+});
+
 test('拒绝明文密码', () => {
   const config = copy();
   config.accounts[0].password = 'should-never-be-saved';

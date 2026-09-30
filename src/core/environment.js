@@ -3,19 +3,18 @@ const os = require('os');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { parseDesktopFile } = require('./desktop-file');
+const { currentPlatform } = require('../platform');
 
 const execFileAsync = promisify(execFile);
 
 async function commandExists(command) {
-  const probe = process.platform === 'win32'
-    ? { executable: process.env.ComSpec || 'cmd.exe', args: ['/d', '/c', 'where', command] }
-    : { executable: 'sh', args: ['-c', 'command -v "$1"', 'probe', command] };
+  const probe = currentPlatform.commandProbe(command);
   try { await execFileAsync(probe.executable, probe.args, { timeout: 2500, windowsHide: true }); return true; }
   catch { return false; }
 }
 
 async function detectSession() {
-  if (process.platform === 'win32') return { type: 'windows', evidence: { sessionName: process.env.SESSIONNAME || null } };
+  if (currentPlatform.sessionType) return { type: currentPlatform.sessionType, evidence: { sessionName: process.env.SESSIONNAME || null } };
   const declared = (process.env.XDG_SESSION_TYPE || '').toLowerCase();
   let loginctl = null;
   try {
@@ -32,13 +31,13 @@ async function detectSession() {
 async function probeEnvironment(config) {
   const session = await detectSession();
   const tools = {};
-  const commands = process.platform === 'win32' ? ['powershell.exe', 'cmd.exe', 'java.exe'] : ['wmctrl', 'xdotool', 'xwininfo', 'xprop', 'gdbus', 'secret-tool', 'python3'];
+  const commands = currentPlatform.environmentCommands;
   for (const command of commands) tools[command] = await commandExists(command);
   let dogtail = false;
-  if (process.platform !== 'win32') try { await execFileAsync('python3', ['-c', 'import dogtail'], { timeout: 3000 }); dogtail = true; } catch { /* absent */ }
+  if (currentPlatform.supportsAtspi) try { await execFileAsync('python3', ['-c', 'import dogtail'], { timeout: 3000 }); dogtail = true; } catch { /* absent */ }
   tools.dogtail = dogtail;
   let atspi = false;
-  if (process.platform !== 'win32') try { await execFileAsync('python3', ['-c', 'import gi; gi.require_version("Atspi","2.0"); from gi.repository import Atspi'], { timeout: 3000 }); atspi = true; } catch { /* absent */ }
+  if (currentPlatform.supportsAtspi) try { await execFileAsync('python3', ['-c', 'import gi; gi.require_version("Atspi","2.0"); from gi.repository import Atspi'], { timeout: 3000 }); atspi = true; } catch { /* absent */ }
   tools.atspi = atspi;
 
   const desktopFile = config.launcher?.desktop_file;

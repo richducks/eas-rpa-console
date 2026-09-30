@@ -9,6 +9,7 @@ const { checkCredentialReference, storeCredential, deleteCredential } = require(
 const { ProcessManager } = require('./core/process-manager');
 const { FoundationRunner } = require('./core/runner');
 const { discoverDataCenters } = require('./core/datacenter-discovery');
+const { currentPlatform } = require('./platform');
 
 let configStore;
 let logger;
@@ -97,8 +98,8 @@ app.whenReady().then(() => {
 
   ipcMain.handle('environment:get', () => ({
     platform: `${os.type()} ${os.release()}`,
-    session: process.env.XDG_SESSION_TYPE || '未识别',
-    display: process.env.DISPLAY || process.env.WAYLAND_DISPLAY || '未连接',
+    session: currentPlatform.sessionType || process.env.XDG_SESSION_TYPE || '未识别',
+    display: currentPlatform.isWindows ? (process.env.SESSIONNAME || 'Windows Desktop') : (process.env.DISPLAY || process.env.WAYLAND_DISPLAY || '未连接'),
     architecture: os.arch(),
     hostname: os.hostname()
   }));
@@ -214,7 +215,7 @@ app.whenReady().then(() => {
       title: '选择 EAS Cloud 启动器',
       properties: ['openFile'],
       filters: [
-        { name: process.platform === 'win32' ? 'Windows 启动器' : 'Desktop 启动器', extensions: process.platform === 'win32' ? ['bat', 'cmd', 'exe'] : ['desktop'] },
+        currentPlatform.launcherFilter,
         { name: '全部文件', extensions: ['*'] }
       ]
     });
@@ -232,5 +233,5 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (currentPlatform.shouldQuitOnAllWindowsClosed) app.quit();
 });

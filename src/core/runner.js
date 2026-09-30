@@ -2,7 +2,7 @@ const { validateConfig } = require('./config');
 const { resolveLaunchSpec, publicLaunchSpec } = require('./launcher');
 const { getCredential } = require('./credentials');
 const { probeEnvironment } = require('./environment');
-const { waitForLoginWindow } = require('./windows');
+const { waitForLoginWindow } = require('./windowing');
 const { automateLogin } = require('./login-automation');
 
 class FoundationRunner {

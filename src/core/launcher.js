@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { parseDesktopFile } = require('./desktop-file');
+const { currentPlatform } = require('../platform');
 
 function resolveClientDirectory(config, baseDirectory = process.cwd()) {
   const configured = config.launcher?.client_directory;
@@ -29,12 +30,10 @@ function resolveLaunchSpec(config) {
   const desktop = launcher.desktop_file && fs.existsSync(launcher.desktop_file) ? parseDesktopFile(launcher.desktop_file) : null;
   const clientDirectory = resolveClientDirectory(config, launcher.working_directory || desktop?.workingDirectory || process.cwd());
   if (clientDirectory) {
-    const startupScript = path.join(clientDirectory, 'bin', process.platform === 'win32' ? 'client.bat' : 'client.sh');
+    const startupScript = path.join(clientDirectory, 'bin', currentPlatform.startupScriptName);
     if (!fs.existsSync(startupScript)) throw new Error(`所选 EAS 客户端目录缺少启动文件：${startupScript}`);
-    if (process.platform === 'win32') {
-      return { executable: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', 'call', startupScript], workingDirectory: path.dirname(startupScript), source: startupScript };
-    }
-    return { executable: '/bin/sh', args: [startupScript], workingDirectory: path.dirname(startupScript), source: startupScript };
+    const wrapped = currentPlatform.wrapStartupScript(startupScript);
+    return { ...wrapped, workingDirectory: path.dirname(startupScript), source: startupScript };
   }
   if (!desktop) throw new Error('EAS Desktop 启动器不存在');
   const parsed = desktop;
