@@ -36,7 +36,7 @@ jobs:
           npm run check
 
       - name: Build Linux packages
-        run: npm run build:linux
+        run: npm run build:linux -- --publish never
 
       - name: Upload Linux release assets
         env:
@@ -71,7 +71,7 @@ jobs:
           npm run check
 
       - name: Build Windows installer
-        run: npm run build:windows
+        run: npm run build:windows -- --publish never
 
       - name: Upload Windows release asset
         shell: pwsh
