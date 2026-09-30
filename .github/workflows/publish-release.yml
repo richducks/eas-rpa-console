@@ -1,0 +1,83 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag to build and publish
+        required: true
+        default: v0.24.1
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: |
+          npm test
+          npm run check
+
+      - name: Build Linux packages
+        run: npm run build:linux
+
+      - name: Upload Linux release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ inputs.tag }}" \
+            dist/EAS-RPA-Console-*-amd64.deb \
+            dist/EAS-RPA-Console-*-x86_64.AppImage \
+            --clobber
+
+  windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: |
+          npm test
+          npm run check
+
+      - name: Build Windows installer
+        run: npm run build:windows
+
+      - name: Upload Windows release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $asset = Get-ChildItem -Path dist -Filter 'EAS-RPA-Console-*-Setup-x64.exe' | Select-Object -First 1
+          if (-not $asset) { throw 'Windows installer not found' }
+          gh release upload '${{ inputs.tag }}' $asset.FullName --clobber
