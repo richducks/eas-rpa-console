@@ -34,6 +34,9 @@ jobs:
       - name: Syntax checks
         run: npm run check
 
+      - name: Acceptance guardrails
+        run: npm run acceptance
+
       - name: Verify platform isolation
         shell: bash
         run: |
@@ -46,10 +49,13 @@ jobs:
             exit 1
           fi
 
-          leaks=$(grep -RIlE 'powershell\.exe|taskkill\.exe|secret-tool|/proc/|loginctl' src/core --include='*.js' || true)
+          leaks=$(grep -RIlE 'powershell\.exe|taskkill\.exe|secret-tool|/proc/|loginctl|wmctrl|xwininfo|xprop|Atspi' src/core --include='*.js' || true)
           if [ -n "$leaks" ]; then
             echo "OS-specific process/credential/session implementations must stay under src/platform"
             echo "Found in core:"
             echo "$leaks"
             exit 1
           fi
+
+      - name: Acceptance contract
+        run: npm run acceptance

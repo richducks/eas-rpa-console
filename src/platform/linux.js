@@ -5,6 +5,66 @@ const { collectDescendants, createKeyringCredentialStore, stopPosixProcess } = r
 
 const execFileAsync = promisify(execFile);
 
+function parseWmctrl(output, pid, expectedTitle) {
+  for (const line of output.split(/\r?\n/)) {
+    const match = line.match(/^(0x[0-9a-f]+)\s+\S+\s+(\d+)\s+\S+\s+(.*)$/i);
+    if (!match || Number(match[2]) !== Number(pid)) continue;
+    const title = match[3].trim();
+    if (!expectedTitle || title.includes(expectedTitle)) return { id: match[1], pid: Number(match[2]), title, backend: 'wmctrl' };
+  }
+  return null;
+}
+
+async function findWithWmctrl(pid, expectedTitle) {
+  const result = await execFileAsync('wmctrl', ['-lp'], { timeout: 3000, maxBuffer: 1024 * 1024 });
+  return parseWmctrl(result.stdout, pid, expectedTitle);
+}
+
+async function findWithXwininfo(pid, expectedTitle) {
+  const tree = await execFileAsync('xwininfo', ['-root', '-tree'], { timeout: 3000, maxBuffer: 2 * 1024 * 1024 });
+  const candidates = [];
+  for (const line of tree.stdout.split(/\r?\n/)) {
+    const match = line.match(/^\s*(0x[0-9a-f]+)\s+"([^"]*)"/i);
+    if (match && (!expectedTitle || match[2].includes(expectedTitle))) candidates.push({ id: match[1], title: match[2] });
+  }
+  for (const candidate of candidates) {
+    try {
+      const property = await execFileAsync('xprop', ['-id', candidate.id, '_NET_WM_PID'], { timeout: 2000, maxBuffer: 16 * 1024 });
+      const windowPid = Number(property.stdout.match(/=\s*(\d+)/)?.[1]);
+      if (windowPid === Number(pid)) return { ...candidate, pid: windowPid, backend: 'xwininfo' };
+    } catch { /* candidate disappeared */ }
+  }
+  return null;
+}
+
+async function findWithAtspi(pid, expectedTitle) {
+  const script = [
+    'import json, sys',
+    'import gi',
+    'gi.require_version("Atspi","2.0")',
+    'from gi.repository import Atspi',
+    'pid=int(sys.argv[1]); title=sys.argv[2]',
+    'desktop=Atspi.get_desktop(0)',
+    'def children(n):',
+    ' try: return [n.get_child_at_index(i) for i in range(n.get_child_count())]',
+    ' except Exception: return []',
+    'for app in children(desktop):',
+    ' try:',
+    '  if app.get_process_id()!=pid: continue',
+    '  for child in children(app):',
+    '   name=child.get_name() or ""',
+    '   if not title or title in name:',
+    '    print(json.dumps({"id":None,"pid":pid,"title":name,"backend":"atspi"}, ensure_ascii=False)); sys.exit(0)',
+    ' except Exception:',
+    '  continue',
+    'sys.exit(2)'
+  ].join('\n');
+  try {
+    const result = await execFileAsync('python3', ['-c', script, String(pid), expectedTitle || ''], { timeout: 4000, maxBuffer: 64 * 1024 });
+    return JSON.parse(result.stdout);
+  } catch { return null; }
+}
+
 function createLinuxAdapter({ rawPlatform = 'linux', environment = process.env } = {}) {
   return {
     rawPlatform,
@@ -49,6 +109,27 @@ function createLinuxAdapter({ rawPlatform = 'linux', environment = process.env }
       try { await execFileAsync('python3', ['-c', 'import gi; gi.require_version("Atspi","2.0"); from gi.repository import Atspi'], { timeout: 3000 }); atspi = true; } catch { /* absent */ }
       return { dogtail, atspi };
     },
+    describeCapabilities({ session, tools, launcher }) {
+      const windowTools = Boolean(tools.wmctrl || (tools.xwininfo && tools.xprop));
+      const accessibility = Boolean(tools.atspi || tools.dogtail);
+      const windowAvailable = session.type === 'x11' ? (windowTools || accessibility) : accessibility;
+      return [
+        { id: 'process', name: 'EAS 启动', available: launcher.parsed, status: launcher.parsed ? '可用' : '需配置', detail: launcher.error || 'Linux 启动命令已准备' },
+        { id: 'window', name: '登录窗口', available: windowAvailable, status: session.type === 'wayland' && !accessibility ? '受 Wayland 限制' : windowAvailable ? '可用' : '工具缺失', detail: session.type === 'wayland' ? 'Wayland 下优先依赖辅助功能接口' : '使用 PID、窗口标题或辅助功能接口定位 EAS' },
+        { id: 'accessibility', name: '辅助功能', available: accessibility, status: accessibility ? '可用' : '可选', detail: accessibility ? 'AT-SPI/dogtail 可连接' : '无辅助功能接口时仍可尝试 X11 窗口探测' },
+        { id: 'credential', name: '密码保护', available: Boolean(tools['secret-tool']), status: tools['secret-tool'] ? 'Secret Service' : '检查 Keyring', detail: '优先使用系统 Keyring；必要时调用 Secret Service' }
+      ];
+    },
+    async findLoginWindow({ pid, title, sessionType, tools = {} }) {
+      if (sessionType === 'x11' && tools.wmctrl) {
+        try { const match = await findWithWmctrl(pid, title); if (match) return match; } catch { /* try other observers */ }
+      }
+      if (tools.xwininfo && tools.xprop) {
+        try { const match = await findWithXwininfo(pid, title); if (match) return match; } catch { /* try accessibility */ }
+      }
+      if (tools.atspi || tools.dogtail) return findWithAtspi(pid, title);
+      return null;
+    },
     stopProcess: stopPosixProcess,
     descendants(rootPid) {
       const rows = [];
@@ -68,4 +149,4 @@ function createLinuxAdapter({ rawPlatform = 'linux', environment = process.env }
   };
 }
 
-module.exports = { createLinuxAdapter };
+module.exports = { createLinuxAdapter, parseWmctrl };

@@ -33,6 +33,7 @@ class FoundationRunner {
     const runId = this.logger.createRunId();
     const startedAt = Date.now();
     let currentAccountId = null;
+    let credential = null;
     this.active = { runId, cancelled: false, pid: null };
     try {
       this.event(runId, null, 'VALIDATE_CONFIG', 'RUNNING');
@@ -42,7 +43,7 @@ class FoundationRunner {
       if (!account) throw Object.assign(new Error('没有已启用账号'), { code: 'NO_ENABLED_ACCOUNT' });
       currentAccountId = account.id;
       this.event(runId, account.id, 'VALIDATE_CREDENTIAL', 'RUNNING');
-      const credential = await this.dependencies.getCredential(account.password_keyring_service, account.password_keyring_key, this.platform);
+      credential = await this.dependencies.getCredential(account.password_keyring_service, account.password_keyring_key, this.platform);
       if (!credential.available) throw Object.assign(new Error('Keyring 凭据缺失'), { code: credential.code });
 
       this.event(runId, account.id, 'DISCOVER_ENV', 'RUNNING');
@@ -65,28 +66,27 @@ class FoundationRunner {
         timeoutMs: config.global.startup_timeout_seconds * 1000,
         pollIntervalMs: config.global.poll_interval_seconds * 1000,
         isProcessAlive: () => this.processManager.isAlive(javaRecord.pid),
-        isCancelled: () => this.active?.cancelled
+        isCancelled: () => this.active?.cancelled,
+        platform: this.platform
       });
       this.event(runId, account.id, 'SELECT_DATACENTER', 'RUNNING', { pid: javaRecord.pid, window, backend: 'java-swing-agent' });
       this.event(runId, account.id, 'SET_USERNAME', 'RUNNING', { pid: javaRecord.pid, backend: 'java-swing-agent' });
       this.event(runId, account.id, 'SET_PASSWORD', 'RUNNING', { pid: javaRecord.pid, backend: 'java-swing-agent' });
       this.event(runId, account.id, 'SUBMIT_LOGIN', 'RUNNING', { pid: javaRecord.pid, backend: 'java-swing-agent' });
-      let automation;
-      try {
-        automation = await this.dependencies.automateLogin({
-          pid: javaRecord.pid, account, password: credential.password, spec, environment, config,
-          helperJar: this.assets.helperJar, agentJar: this.assets.agentJar,
-          isCancelled: () => this.active?.cancelled,
-          platform: this.platform
-        });
-      } finally { credential.password = null; }
+      const automation = await this.dependencies.automateLogin({
+        pid: javaRecord.pid, account, password: credential.password, spec, environment, config,
+        helperJar: this.assets.helperJar, agentJar: this.assets.agentJar,
+        isCancelled: () => this.active?.cancelled,
+        platform: this.platform
+      });
       this.event(runId, account.id, 'VERIFY_LOGIN', 'RUNNING', { pid: javaRecord.pid, backend: automation.backend });
       this.ready.push({ runId, pid: javaRecord.pid, accountId: account.id });
       return this.event(runId, account.id, 'SUCCESS', 'SUCCESS', { pid: javaRecord.pid, backend: automation.backend, elapsedMs: Date.now() - startedAt, message: '自动登录成功' });
     } catch (error) {
-      if (this.active?.pid) this.processManager.stopOwned(this.active.pid, runId);
+      this.processManager.stopRun(runId);
       return this.event(runId, currentAccountId, error.code === 'TASK_CANCELLED' ? 'STOPPED' : 'FAILED', error.code === 'TASK_CANCELLED' ? 'STOPPED' : 'FAILED', { pid: this.active?.pid, errorCode: error.code || 'UNEXPECTED_ERROR', message: error.message, elapsedMs: Date.now() - startedAt });
     } finally {
+      if (credential?.password) credential.password = null;
       this.active = null;
     }
   }
@@ -96,10 +96,11 @@ class FoundationRunner {
     if (!target) return { stopped: false, code: 'NO_ACTIVE_RUN' };
     if (this.active) this.active.cancelled = true;
     if (!target.pid) return { stopped: true, code: 'STOP_REQUESTED' };
-    if (this.active) return this.processManager.stopOwned(target.pid, target.runId);
-    const results = this.ready.map(item => this.processManager.stopOwned(item.pid, item.runId));
+    if (this.active) return this.processManager.stopRun(target.runId);
+    const runIds = [...new Set(this.ready.map(item => item.runId))];
+    const results = runIds.map(runId => this.processManager.stopRun(runId));
     this.ready = [];
-    return { stopped: results.some(item => item.stopped), code: 'OWNED_PROCESSES_STOP_REQUESTED', count: results.filter(item => item.stopped).length };
+    return { stopped: results.some(item => item.stopped), code: 'OWNED_PROCESSES_STOP_REQUESTED', count: results.reduce((sum, item) => sum + (item.count || 0), 0) };
   }
 }
 

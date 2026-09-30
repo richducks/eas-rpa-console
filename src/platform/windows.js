@@ -90,6 +90,14 @@ function createWindowsAdapter({ rawPlatform = 'win32', environment = process.env
     },
     async detectSession() { return { type: 'windows', evidence: { sessionName: environment.SESSIONNAME || null } }; },
     async probeAccessibility() { return { dogtail: false, atspi: false }; },
+    describeCapabilities({ launcher }) {
+      return [
+        { id: 'process', name: 'EAS 启动', available: launcher.parsed, status: launcher.parsed ? '可用' : '需配置', detail: launcher.error || 'Windows 启动命令已准备' },
+        { id: 'window', name: '登录窗口', available: launcher.parsed, status: launcher.parsed ? 'Java Agent 可用' : '等待客户端', detail: '使用 EAS Java/Swing Agent 定位并操作登录界面' },
+        { id: 'credential', name: '密码保护', available: true, status: 'DPAPI', detail: '密码使用当前 Windows 用户作用域 DPAPI 加密' }
+      ];
+    },
+    async findLoginWindow({ pid, title }) { return { id: null, pid: Number(pid), title: title || '', backend: 'java-swing-agent' }; },
     stopProcess({ pid }) {
       try { execFileSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, timeout: 5000 }); return { stopped: true, code: 'STOP_SIGNAL_SENT' }; }
       catch { return { stopped: false, code: 'PROCESS_STOP_FAILED' }; }

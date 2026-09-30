@@ -8,12 +8,14 @@ const { probeEnvironment } = require('./core/environment');
 const { checkCredentialReference, storeCredential, deleteCredential } = require('./core/credentials');
 const { ProcessManager } = require('./core/process-manager');
 const { FoundationRunner } = require('./core/runner');
+const { RunCoordinator } = require('./core/run-coordinator');
 const { discoverDataCenters } = require('./core/datacenter-discovery');
 const { currentPlatform } = require('./platform');
 
 let configStore;
 let logger;
 let runner;
+let runCoordinator;
 
 function loadWindowState() {
   try {
@@ -71,10 +73,16 @@ function createWindow() {
 
   if (process.env.EAS_RPA_SCREENSHOT) {
     win.webContents.once('did-finish-load', async () => {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      if (process.env.EAS_RPA_SCREENSHOT_PAGE === 'credentials') await win.webContents.executeJavaScript("goTo('credentials')");
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        const ready = await win.webContents.executeJavaScript('Boolean(window.__easRpaReady)').catch(() => false);
+        if (ready) break;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      const screenshotPage = process.env.EAS_RPA_SCREENSHOT_PAGE;
+      if (['dashboard', 'environment', 'logs', 'settings'].includes(screenshotPage)) await win.webContents.executeJavaScript(`goTo('${screenshotPage}')`);
+      if (screenshotPage === 'environment') await win.webContents.executeJavaScript('probeEnvironment()');
       if (process.env.EAS_RPA_SCREENSHOT_THEME === 'dark') await win.webContents.executeJavaScript("document.body.classList.add('dark')");
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 250));
       const image = await win.webContents.capturePage();
       fs.writeFileSync(process.env.EAS_RPA_SCREENSHOT, image.toPNG());
       app.quit();
@@ -96,6 +104,7 @@ app.whenReady().then(() => {
     assets: { helperJar: path.join(javaAssetRoot, 'attach-helper.jar'), agentJar: path.join(javaAssetRoot, 'datacenter-agent.jar') },
     platform: currentPlatform
   });
+  runCoordinator = new RunCoordinator(runner);
 
   ipcMain.handle('environment:get', () => ({
     platform: `${os.type()} ${os.release()}`,
@@ -120,7 +129,10 @@ app.whenReady().then(() => {
     return result;
   });
 
-  ipcMain.handle('config:get', () => ({ config: configStore.load(), path: configStore.filePath }));
+  ipcMain.handle('config:get', () => {
+    const config = configStore.load();
+    return { config, path: configStore.filePath, recovery: configStore.lastRecovery };
+  });
   ipcMain.handle('config:save', (_event, config) => {
     const result = configStore.save(config);
     logger.write(result.valid ? 'INFO' : 'ERROR', result.valid ? 'CONFIG_SAVED' : 'CONFIG_INVALID', {
@@ -174,31 +186,8 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('app:paths', () => ({ userData: dataDirectory, config: configStore.filePath, logs: logger.logDirectory }));
-  ipcMain.handle('task:start-foundation', async (_event, dataCenter) => {
-    const config = configStore.load();
-    if (typeof dataCenter !== 'string' || !dataCenter.trim()) return { status: 'FAILED', succeeded: 0, total: 0, message: '未选择数据中心' };
-    const enabled = config.accounts.filter(account => account.enabled && account.data_center === dataCenter);
-    if (!enabled.length) return { status: 'FAILED', succeeded: 0, total: 0, message: '当前数据中心没有启用账号' };
-    const results = [];
-    for (const account of enabled) {
-      const accountConfig = JSON.parse(JSON.stringify(config));
-      accountConfig.accounts.forEach(item => { item.enabled = item.id === account.id && item.data_center === dataCenter; });
-      const result = await runner.run(accountConfig);
-      results.push(result);
-      if (result.status !== 'SUCCESS' && !config.global.continue_on_error) break;
-    }
-    const succeeded = results.filter(result => result.status === 'SUCCESS').length;
-    return { status: succeeded === enabled.length ? 'SUCCESS' : succeeded ? 'PARTIAL' : 'FAILED', succeeded, total: enabled.length, results };
-  });
-  ipcMain.handle('task:start-account', async (_event, accountId) => {
-    const config = configStore.load();
-    const account = typeof accountId === 'string' ? config.accounts.find(item => item.id === accountId) : null;
-    if (!account) return { status: 'FAILED', succeeded: 0, total: 0, message: '账号不存在' };
-    const accountConfig = JSON.parse(JSON.stringify(config));
-    accountConfig.accounts.forEach(item => { item.enabled = item.id === account.id; });
-    const result = await runner.run(accountConfig);
-    return { status: result.status, succeeded: result.status === 'SUCCESS' ? 1 : 0, total: 1, message: result.message, results: [result] };
-  });
+  ipcMain.handle('task:start-foundation', async (_event, dataCenter) => runCoordinator.runDataCenter(configStore.load(), dataCenter));
+  ipcMain.handle('task:start-account', async (_event, accountId) => runCoordinator.runAccount(configStore.load(), accountId));
   ipcMain.handle('task:stop', () => runner.stop());
   ipcMain.handle('datacenters:discover', async () => {
     try {

@@ -31,6 +31,14 @@ function createMacosAdapter({ rawPlatform = 'darwin', environment = process.env 
     },
     async detectSession() { return { type: 'macos', evidence: { display: environment.DISPLAY || null } }; },
     async probeAccessibility() { return { dogtail: false, atspi: false }; },
+    describeCapabilities({ launcher }) {
+      return [
+        { id: 'process', name: 'EAS 启动', available: launcher.parsed, status: launcher.parsed ? '实验' : '需配置', detail: '仅保留 POSIX 启动入口，尚未完成 EAS 实机验收' },
+        { id: 'window', name: '登录窗口', available: false, status: '未验收', detail: 'macOS 自动登录暂不宣称可用' },
+        { id: 'credential', name: '密码保护', available: true, status: 'Keychain', detail: '通过 keytar 接入系统 Keychain' }
+      ];
+    },
+    async findLoginWindow() { return null; },
     stopProcess: stopPosixProcess,
     descendants(rootPid) {
       let output = '';

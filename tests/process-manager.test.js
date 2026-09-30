@@ -24,3 +24,21 @@ test('仅停止由当前 run 启动并持有的进程', async () => {
   await new Promise(resolve => record.child.once('exit', resolve));
   assert.equal(record.exited, true);
 });
+
+
+test('失败恢复按 runId 停止该次运行持有的全部进程并释放记录', () => {
+  const stopped = [];
+  const manager = new ProcessManager({
+    stopProcess: ({ pid }) => { stopped.push(pid); return { stopped: true, code: 'STOP_SIGNAL_SENT' }; },
+    descendants: () => []
+  });
+  manager.registerOwnedPid(200, { runId: 'run-a', accountId: 'a' });
+  manager.registerOwnedPid(201, { runId: 'run-a', accountId: 'a' });
+  manager.registerOwnedPid(300, { runId: 'run-b', accountId: 'b' });
+  const result = manager.stopRun('run-a');
+  assert.equal(result.stopped, true);
+  assert.equal(result.count, 2);
+  assert.deepEqual(stopped.sort(), [200, 201]);
+  assert.equal(manager.isOwned(200, 'run-a'), false);
+  assert.equal(manager.isOwned(300, 'run-b'), true);
+});

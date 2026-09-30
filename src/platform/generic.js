@@ -31,6 +31,14 @@ function createGenericAdapter({ rawPlatform, environment = process.env } = {}) {
     },
     async detectSession() { return { type: rawPlatform || 'unknown', evidence: { display: environment.DISPLAY || null } }; },
     async probeAccessibility() { return { dogtail: false, atspi: false }; },
+    describeCapabilities({ launcher }) {
+      return [
+        { id: 'process', name: 'EAS 启动', available: launcher.parsed, status: launcher.parsed ? '实验' : '需配置', detail: '当前平台仅提供通用 POSIX 入口' },
+        { id: 'window', name: '登录窗口', available: false, status: '不支持', detail: '当前平台没有已验证的窗口定位实现' },
+        { id: 'credential', name: '密码保护', available: false, status: '不支持', detail: '当前平台没有已验证的系统凭据实现' }
+      ];
+    },
+    async findLoginWindow() { return null; },
     stopProcess: stopPosixProcess,
     descendants() { return []; }
   };

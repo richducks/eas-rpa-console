@@ -1,6 +1,6 @@
 {
   "name": "eascloud-rpa-console",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "private": true,
   "description": "EAS Cloud multi-account RPA desktop console",
   "author": {
@@ -16,8 +16,9 @@
     "build:windows": "node scripts/require-host.js win32 && electron-builder --win nsis --x64",
     "build:mac": "node scripts/require-host.js darwin && electron-builder --mac dmg --x64 --arm64",
     "build:web": "node scripts/build-web.js",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer/app.js && node --check src/platform/index.js && node --check src/platform/shared.js && node --check src/platform/windows.js && node --check src/platform/linux.js && node --check src/platform/macos.js && node --check src/platform/generic.js && node --check src/core/config.js && node --check src/core/credentials.js && node --check src/core/environment.js && node --check src/core/launcher.js && node --check src/core/process-manager.js && node --check src/core/windowing.js && node --check src/core/runner.js",
-    "test": "node --test"
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer/app.js && node --check src/platform/index.js && node --check src/platform/shared.js && node --check src/platform/windows.js && node --check src/platform/linux.js && node --check src/platform/macos.js && node --check src/platform/generic.js && node --check src/core/config.js && node --check src/core/credentials.js && node --check src/core/environment.js && node --check src/core/launcher.js && node --check src/core/process-manager.js && node --check src/core/windowing.js && node --check src/core/runner.js && node --check src/core/run-coordinator.js",
+    "test": "node --test",
+    "acceptance": "node scripts/acceptance-check.js"
   },
   "devDependencies": {
     "electron": "^38.2.0",
@@ -64,7 +65,9 @@
       "syncDesktopName": true
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "artifactName": "EAS-RPA-Console-${version}-Setup-${arch}.${ext}"
     },
     "nsis": {

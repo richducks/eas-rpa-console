@@ -50,6 +50,17 @@ class ProcessManager {
     return this.platform.stopProcess({ pid, child: record.child });
   }
 
+  stopRun(runId) {
+    const records = [...this.owned.values()]
+      .filter(record => record.runId === runId)
+      .sort((a, b) => b.startedAt - a.startedAt);
+    if (!records.length) return { stopped: false, code: 'RUN_NOT_OWNED', count: 0 };
+    const results = records.map(record => this.stopOwned(record.pid, runId));
+    for (const record of records) this.owned.delete(record.pid);
+    const count = results.filter(result => result.stopped).length;
+    return { stopped: count > 0, code: count ? 'RUN_PROCESSES_STOP_REQUESTED' : 'PROCESS_STOP_FAILED', count, results };
+  }
+
   registerOwnedPid(pid, context = {}) {
     const record = { child: null, pid, accountId: context.accountId, runId: context.runId, startedAt: Date.now(), stderr: '', exited: false, exitCode: null, signal: null };
     this.owned.set(pid, record);

@@ -1,100 +1,105 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
-    <title>EAS 自动登录中心</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body class="dashboard-view">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <div class="brand-mark">EA</div>
-          <div><strong>EAS 自动登录</strong><span>RPA CONTROL CENTER</span></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <title>EAS 自动登录</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand"><span class="brand-mark">EA</span><div><strong>EAS 自动登录</strong><small>一次配置，直接登录</small></div></div>
+      <nav class="main-nav" aria-label="主导航">
+        <button class="nav-item active" data-page="dashboard">登录</button>
+        <button class="nav-item" data-page="environment">诊断</button>
+        <button class="nav-item" data-page="logs">日志</button>
+      </nav>
+      <div class="header-actions">
+        <span class="app-status" id="app-status"><i></i><span>正在检查</span></span>
+        <button class="icon-button" id="theme-button" aria-label="切换明暗主题" title="切换主题">◐</button>
+        <button class="icon-button" id="settings-button" aria-label="打开设置" title="设置">⚙</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="page active" id="dashboard-page">
+        <div class="page-head">
+          <div><h1>登录 EAS</h1><p>选择数据中心和账号，然后开始。其他细节由程序处理。</p></div>
+          <button class="primary-button" id="run-button" disabled>登录已启用账号</button>
         </div>
 
-        <nav>
-          <button class="nav-item active" data-page="dashboard"><span class="nav-icon">♙</span>登录账号簿<span class="nav-count">3</span></button>
-          <button class="nav-item" data-page="environment"><span class="nav-icon">◇</span>环境探测</button>
-          <button class="nav-item" data-page="logs"><span class="nav-icon">≡</span>运行日志</button>
-          <button class="nav-item" data-page="settings"><span class="nav-icon">⚙</span>系统设置</button>
-        </nav>
+        <section class="setup-card" id="setup-card">
+          <div class="setup-copy"><span class="eyebrow">首次使用</span><h2>3 步完成设置</h2><p id="setup-summary">先指定 EAS 客户端，再读取数据中心并添加账号。</p></div>
+          <div class="setup-steps">
+            <button class="setup-step" id="setup-client"><span class="step-index">1</span><span><strong>EAS 客户端</strong><small id="setup-client-state">未选择</small></span><em>选择</em></button>
+            <button class="setup-step" id="setup-centers"><span class="step-index">2</span><span><strong>数据中心</strong><small id="setup-centers-state">等待客户端</small></span><em>读取</em></button>
+            <button class="setup-step" id="setup-account"><span class="step-index">3</span><span><strong>登录账号</strong><small id="setup-account-state">尚未添加</small></span><em>添加</em></button>
+          </div>
+        </section>
 
-        <div class="sidebar-foot">
-          <div class="security-note"><span>✓</span><div><strong>凭据安全</strong><small>密码仅从系统 Keyring 读取</small></div></div>
-          <div class="version">EAS RPA Console <span>v0.25.0</span></div>
+        <div class="workspace">
+          <aside class="center-panel card">
+            <div class="card-head"><div><h2>数据中心</h2><p id="datacenter-source">尚未读取</p></div><div class="head-links"><button class="text-button" id="manual-datacenter">手动添加</button><button class="text-button" id="refresh-datacenters">刷新</button></div></div>
+            <div id="datacenter-list" class="center-list"></div>
+            <button class="quiet-button full" id="choose-client-directory">选择其他 EAS 客户端</button>
+          </aside>
+
+          <section class="accounts-panel card">
+            <div class="card-head account-head">
+              <div><h2 id="account-title">账号</h2><p id="account-subtitle">选择一个数据中心</p></div>
+              <button class="secondary-button" id="add-account">＋ 添加账号</button>
+            </div>
+            <div id="account-list" class="account-list"></div>
+          </section>
         </div>
-      </aside>
+      </section>
 
-      <main class="main">
-        <header class="topbar">
-          <div><h1 id="page-title">登录账号簿</h1><p id="page-subtitle">直接编辑账号并批量登录</p></div>
-          <div class="top-actions">
-            <div class="system-status"><i></i><span>系统就绪</span></div>
-            <button class="icon-btn" id="theme-button" title="切换明暗主题">◐</button>
-            <button class="icon-btn" id="settings-button" title="系统设置">⚙</button>
-          </div>
-        </header>
+      <section class="page" id="environment-page">
+        <div class="page-head"><div><h1>运行诊断</h1><p>只有登录失败时才需要来这里。结果会直接告诉你哪里未准备好。</p></div><button class="secondary-button" id="probe-button">重新检查</button></div>
+        <div class="diagnostic-summary card" id="diagnostic-summary"><strong>正在检查运行环境…</strong><p>不会修改 EAS 配置。</p></div>
+        <div class="diagnostic-grid" id="environment-grid"></div>
+        <section class="card"><div class="card-head"><div><h2>能力检查</h2><p>绿色表示已具备，黄色表示登录时可能受限。</p></div></div><div id="capability-list"></div></section>
+      </section>
 
-        <div class="settings-tabs" id="settings-tabs" hidden><button data-settings-page="settings">常规设置</button><button data-settings-page="environment">环境检测</button><button data-settings-page="logs">运行日志</button></div>
+      <section class="page" id="logs-page">
+        <div class="page-head"><div><h1>运行日志</h1><p>只保留诊断所需信息，密码不会写入日志。</p></div><button class="quiet-button" id="clear-logs">清空当前视图</button></div>
+        <section class="card log-card"><div class="log-head"><span><i class="live-dot"></i> 本次会话</span><small>敏感字段自动脱敏</small></div><div class="terminal" id="terminal"></div></section>
+      </section>
 
-        <section class="content page active" id="dashboard-page">
-          <div class="ledger-grid">
-            <section class="ledger-column ledger-list panel">
-              <div class="ledger-head"><div><h3>数据中心</h3><p id="datacenter-source">从客户端目录读取</p></div></div>
-              <div id="ledger-datacenter-list"></div>
-              <div class="datacenter-actions"><button id="choose-datacenter-directory" title="选择 EAS 客户端目录" aria-label="选择 EAS 客户端目录"><span class="action-symbol">▣</span><span class="action-label">选择路径</span></button><button id="refresh-datacenters" title="刷新数据中心" aria-label="刷新数据中心"><span class="action-symbol">↻</span><span class="action-label">刷新</span></button></div>
-              <div class="ledger-foot"><div class="system-status" title="系统状态"><i></i><span>系统就绪</span></div><div class="ledger-foot-actions"><button class="icon-btn" id="dashboard-theme-button" title="切换明暗主题" aria-label="切换明暗主题">◐</button><button class="icon-btn" id="dashboard-settings-button" title="系统设置" aria-label="系统设置">⚙</button></div></div>
-            </section>
-            <div class="column-resizer" data-resizer="datacenter" title="拖动调整栏宽"></div>
-            <section class="ledger-column ledger-detail panel">
-              <div class="ledger-head"><div class="ledger-title"><h3>账号簿</h3><p id="account-book-subtitle">选择数据中心查看账号</p></div><div class="head-actions"><span class="queue-count" id="account-book-count">0</span><span id="enabled-count" class="enabled-count" title="参与登录账号数">0 可登录</span><button class="primary-btn batch-login-btn" id="run-button"><span>▶</span>批量登录</button></div></div>
-              <div id="ledger-account-book"></div>
-              <div class="account-book-actions"><button class="icon-add" id="ledger-add-account" title="添加账号" aria-label="添加账号"><span>＋</span><span class="action-label">添加账号</span></button></div>
-            </section>
-          </div>
-          <div id="task-table" hidden></div><span id="queue-count" hidden>0</span>
-          <div id="activity-list" hidden></div><button id="clear-activity" hidden></button>
-        </section>
+      <section class="page" id="settings-page">
+        <div class="page-head"><div><h1>设置</h1><p>常用操作不需要改这里。仅在客户端路径或超时策略有特殊要求时调整。</p></div><button class="primary-button" id="save-settings">保存</button></div>
+        <div class="settings-grid">
+          <section class="card form-card"><h2>EAS 客户端</h2><label>客户端目录<div class="input-action"><input id="client-directory" placeholder="选择 EAS 根目录或 client 目录" /><button id="browse-client-directory">选择</button></div></label><label>启动器文件<div class="input-action"><input id="launcher-path" placeholder="可选：Desktop / bat / sh" /><button id="browse-launcher">选择</button></div></label><p class="form-help">优先使用客户端目录；只有特殊安装方式才需要指定启动器。</p></section>
+          <section class="card form-card"><h2>失败处理</h2><div class="field-grid"><label>启动超时（秒）<input id="startup-timeout" type="number" min="10" /></label><label>登录超时（秒）<input id="login-timeout" type="number" min="10" /></label><label>瞬时失败重试<input id="retry-count" type="number" min="0" max="3" /></label><label>检查间隔（秒）<input id="poll-interval" type="number" min="0.1" step="0.1" /></label></div><label class="switch-row"><span><strong>单个账号失败后继续</strong><small>批量登录不会被一个账号阻断</small></span><input id="continue-on-error" type="checkbox" /><i></i></label></section>
+        </div>
+      </section>
+    </main>
+  </div>
 
-        <section class="content page" id="accounts-page">
-          <div class="section-toolbar"><div><h2>账号管理</h2><p>账号密码不会保存在此应用中，仅维护 Keyring 引用。</p></div><button class="primary-btn" id="add-account">＋ 添加账号</button></div>
-          <section class="panel account-list" id="account-list"></section>
-        </section>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-        <section class="content page" id="credentials-page">
-          <div class="section-toolbar"><div><h2>Keyring 凭据</h2><p>密码保存在 Ubuntu Secret Service 中，不写入应用配置和日志。</p></div><div class="toolbar-actions"><button class="secondary-btn" id="refresh-credentials">检查全部</button><button class="secondary-btn" id="add-keyring-account">＋ 添加账号</button><button class="primary-btn" id="open-credential-modal">＋ 写入凭据</button></div></div>
-          <section class="panel credential-list" id="credential-list"></section>
-          <div class="keyring-help"><strong>安全说明</strong><span>密码通过标准输入直接交给系统 Keyring；不会出现在命令参数、YAML、日志或截图中。</span></div>
-        </section>
+  <div class="modal-backdrop" id="account-modal" aria-hidden="true">
+    <form class="modal" id="account-form">
+      <div class="modal-head"><div><h2 id="account-modal-title">添加账号</h2><p>密码只交给系统安全存储，不写入配置文件。</p></div><button type="button" class="modal-close" aria-label="关闭">×</button></div>
+      <input type="hidden" name="accountId" />
+      <label>数据中心<select name="dataCenter" id="account-data-center" required></select></label>
+      <label>用户名<input name="username" autocomplete="username" required placeholder="EAS 登录用户名" /></label>
+      <label>密码<input name="password" type="password" autocomplete="new-password" placeholder="新增时必填；编辑时留空不修改" /></label>
+      <div class="modal-actions"><button type="button" class="danger-button" id="delete-account" hidden>删除账号</button><button type="button" class="quiet-button modal-close">取消</button><button class="primary-button" type="submit">保存</button></div>
+    </form>
+  </div>
 
-        <section class="content page" id="environment-page">
-          <div class="section-toolbar"><div><h2>环境能力探测</h2><p>在启动 EAS 前确认桌面会话、窗口工具和无障碍能力。</p></div><button class="primary-btn" id="probe-button">↻ 立即探测</button></div>
-          <div class="environment-grid" id="environment-grid"></div>
-          <section class="panel capability-panel"><div class="panel-head"><div><h3>自动化能力矩阵</h3><p>真实接入后将按照以下顺序选择后端</p></div></div><div id="capability-list"></div></section>
-        </section>
+  <div class="modal-backdrop" id="datacenter-modal" aria-hidden="true">
+    <form class="modal compact-modal" id="datacenter-form">
+      <div class="modal-head"><div><h2>手动添加数据中心</h2><p>仅在客户端无法自动读取时使用。</p></div><button type="button" class="datacenter-modal-close modal-close" aria-label="关闭">×</button></div>
+      <label>数据中心名称<input name="name" required placeholder="例如：生产中心" /></label>
+      <div class="modal-actions"><button type="button" class="quiet-button datacenter-modal-close">取消</button><button class="primary-button" type="submit">添加</button></div>
+    </form>
+  </div>
 
-        <section class="content page" id="logs-page">
-          <div class="section-toolbar"><div><h2>运行日志</h2><p>日志已自动脱敏，不包含密码或完整凭据。</p></div><button class="secondary-btn" id="clear-logs">清空日志</button></div>
-          <section class="panel log-panel"><div class="log-toolbar"><span class="live-dot"></span> 实时日志 <select><option>全部级别</option><option>信息</option><option>警告</option><option>错误</option></select></div><div class="terminal" id="terminal"></div></section>
-        </section>
-
-        <section class="content page" id="settings-page">
-          <div class="section-toolbar"><div><h2>系统设置</h2><p>配置启动器、等待策略和失败处理方式。</p></div><button class="primary-btn" id="save-settings">保存设置</button></div>
-          <div class="settings-grid">
-            <section class="panel form-panel"><h3>EAS 客户端</h3><label>客户端目录</label><div class="file-input"><input id="client-directory" placeholder="例如：/home/user/kingdee/eas/client" /><button id="browse-client-directory">选择</button></div><small>手动指定客户端目录；数据中心从 deploy/client/datacenters.xml 读取。相对路径以启动文件的工作目录为基准。</small><label>Desktop 启动文件</label><div class="file-input"><input id="launcher-path" value="/opt/Kingdee/EASCloud.desktop" /><button id="browse-launcher">选择</button></div><small>启动命令与工作目录从 Desktop 文件解析，不通过桌面图标启动。</small></section>
-            <section class="panel form-panel"><h3>任务策略</h3><div class="field-row"><label>启动超时<input id="startup-timeout" type="number" value="120" /><em>秒</em></label><label>登录超时<input id="login-timeout" type="number" value="60" /><em>秒</em></label></div><div class="field-row"><label>重试次数<input id="retry-count" type="number" value="1" /></label><label>轮询间隔<input id="poll-interval" type="number" value="0.5" step="0.1" /><em>秒</em></label></div><label class="switch-row"><span><strong>失败后继续</strong><small>当前账号失败时继续处理下一个</small></span><input id="continue-on-error" type="checkbox" checked /><i></i></label><label class="switch-row"><span><strong>失败时截图</strong><small>仅截取目标窗口并遮盖敏感区域</small></span><input id="screenshot-on-failure" type="checkbox" checked /><i></i></label></section>
-          </div>
-        </section>
-      </main>
-    </div>
-
-    <div class="toast" id="toast"></div>
-    <div class="modal-backdrop" id="account-modal"><form class="modal" id="account-form"><div class="modal-head"><div><h3>添加登录账号</h3><p id="account-modal-context">添加到当前数据中心，密码由系统 Keyring 保护</p></div><button type="button" class="modal-close">×</button></div><label>用户名<input name="username" placeholder="EAS 登录用户名" autocomplete="username" required /></label><label>密码<input name="password" type="password" placeholder="EAS 登录密码" autocomplete="new-password" required /></label><div class="modal-actions"><button type="button" class="secondary-btn modal-close">取消</button><button class="primary-btn">保存账号</button></div></form></div>
-    <div class="modal-backdrop" id="credential-modal"><form class="modal" id="credential-form"><div class="modal-head"><div><h3>写入 Keyring 凭据</h3><p>可首次设置，也可安全更新已有密码</p></div><button type="button" class="credential-modal-close modal-close">×</button></div><label>登录账号<select name="accountId" id="credential-account" required></select></label><label>密码<input name="password" type="password" autocomplete="new-password" required /></label><label>再次确认<input name="confirmation" type="password" autocomplete="new-password" required /></label><div class="modal-actions"><button type="button" class="secondary-btn credential-modal-close">取消</button><button class="primary-btn">安全写入</button></div></form></div>
-    <script src="web-bridge.js"></script>
-    <script src="app.js"></script>
-  </body>
+  <script src="web-bridge.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>

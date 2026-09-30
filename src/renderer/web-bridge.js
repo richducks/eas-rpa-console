@@ -3,9 +3,9 @@
 
   const storageKey = 'eas-rpa-web-config';
   const defaultConfig = {
-    global: { startup_timeout_seconds: 120, login_timeout_seconds: 60, poll_interval_seconds: 0.5, retry_count: 1, continue_on_error: true, screenshot_on_failure: false, max_instances: null },
+    global: { startup_timeout_seconds: 120, login_timeout_seconds: 60, poll_interval_seconds: 0.5, retry_count: 1, continue_on_error: true },
     launcher: { desktop_file: '', command: null, working_directory: null, client_directory: null },
-    ui: { login_window_title: '金蝶EAS Cloud系统登录', success_window_title: null, backend_order: ['atspi', 'keyboard', 'image'], template_directory: 'templates', data_centers: [] },
+    ui: { login_window_title: '金蝶EAS Cloud系统登录', data_centers: [] },
     accounts: []
   };
   const readConfig = () => {
@@ -40,8 +40,8 @@
     pickClientDirectory: async () => null
   };
 
+  document.body.classList.add('web-mode');
   document.addEventListener('DOMContentLoaded', () => {
-    document.body.classList.add('web-mode');
     const status = document.querySelector('.system-status span');
     if (status) status.textContent = '网页版 · 仅管理';
     const dashboardStatus = document.querySelector('.ledger-foot .system-status span');

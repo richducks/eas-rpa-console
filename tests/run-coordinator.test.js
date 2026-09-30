@@ -1,0 +1,66 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { RunCoordinator } = require('../src/core/run-coordinator');
+
+function baseConfig() {
+  return {
+    global: { retry_count: 1, continue_on_error: true },
+    accounts: [
+      { id: 'a', enabled: true, data_center: '生产' },
+      { id: 'b', enabled: true, data_center: '生产' }
+    ]
+  };
+}
+
+test('批量运行按账号隔离配置，并对瞬时失败执行配置的重试次数', async () => {
+  const attempts = new Map();
+  const runner = {
+    async run(config) {
+      const account = config.accounts.find(item => item.enabled);
+      assert.equal(config.accounts.filter(item => item.enabled).length, 1);
+      const count = (attempts.get(account.id) || 0) + 1;
+      attempts.set(account.id, count);
+      if (account.id === 'a' && count === 1) return { status: 'FAILED', errorCode: 'LOGIN_VERIFY_TIMEOUT', message: 'timeout' };
+      return { status: 'SUCCESS', message: 'ok' };
+    }
+  };
+  const result = await new RunCoordinator(runner).runDataCenter(baseConfig(), '生产');
+  assert.equal(result.status, 'SUCCESS');
+  assert.equal(result.succeeded, 2);
+  assert.deepEqual([...attempts.entries()], [['a', 2], ['b', 1]]);
+  assert.equal(result.results[0].attempts, 2);
+});
+
+test('密码错误属于确定性失败，不执行无意义重试', async () => {
+  let calls = 0;
+  const config = baseConfig();
+  config.accounts = [config.accounts[0]];
+  const runner = { run: async () => { calls += 1; return { status: 'FAILED', errorCode: 'LOGIN_REJECTED', message: 'bad password' }; } };
+  const result = await new RunCoordinator(runner).runDataCenter(config, '生产');
+  assert.equal(result.status, 'FAILED');
+  assert.equal(calls, 1);
+  assert.equal(result.results[0].attempts, 1);
+});
+
+test('continue_on_error=false 时首个最终失败即停止后续账号', async () => {
+  const config = baseConfig();
+  config.global.retry_count = 0;
+  config.global.continue_on_error = false;
+  const seen = [];
+  const runner = { run: async isolated => { const id = isolated.accounts.find(item => item.enabled).id; seen.push(id); return { status: id === 'a' ? 'FAILED' : 'SUCCESS', errorCode: 'PROCESS_START_TIMEOUT' }; } };
+  const result = await new RunCoordinator(runner).runDataCenter(config, '生产');
+  assert.equal(result.status, 'FAILED');
+  assert.deepEqual(seen, ['a']);
+});
+
+
+test('未知错误默认不重试，避免把程序缺陷放大成重复操作', async () => {
+  let calls = 0;
+  const config = baseConfig();
+  config.accounts = [config.accounts[0]];
+  config.global.retry_count = 3;
+  const runner = { run: async () => { calls += 1; return { status: 'FAILED', errorCode: 'UNEXPECTED_ERROR', message: 'bug' }; } };
+  const result = await new RunCoordinator(runner).runDataCenter(config, '生产');
+  assert.equal(result.status, 'FAILED');
+  assert.equal(calls, 1);
+});

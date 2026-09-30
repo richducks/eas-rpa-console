@@ -1,8 +1,8 @@
 # EAS 自动登录中心
 
-当前源码版本为 **0.25.0**。这是 EAS Cloud 多账号自动登录控制台。0.25.0 以用户提供并校验过 SHA-256 的 Windows 0.21.2 正式安装包为基准，把 DPAPI、PowerShell/CIM、`taskkill`、Linux Secret Service、`/proc` 和会话探测等 OS 实现彻底下沉到 `src/platform/*`；`src/core/*` 只保留跨平台业务流程。
+当前源码版本为 **0.26.0**。这一版在 0.25.0 的跨平台底座上做了两轮独立验收：工程轮收紧重试、进程回收、配置恢复和凭据生命周期；产品轮重做首次使用路径与 UI，只保留“登录 / 诊断 / 日志”三层主导航。
 
-![EAS 自动登录中心界面](docs/screenshots/latest-ui.png)
+![0.26.0 首次打开验收界面](docs/screenshots/acceptance-first-run.png)
 
 ## 目录结构
 
@@ -22,10 +22,10 @@
 
 Ubuntu 版本已在本机完成构建：
 
-- Ubuntu 免安装：`dist/EAS-RPA-Console-0.25.0-x86_64.AppImage`
-- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.25.0-amd64.deb`
+- Ubuntu 免安装：`dist/EAS-RPA-Console-0.26.0-x86_64.AppImage`
+- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.26.0-amd64.deb`
 
-Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.25.0 保留 Windows 0.21.2 已验证的 DPAPI、`client.bat`、PowerShell/CIM 进程树和 Java Swing Agent 能力，但这些实现已经隔离到 Windows 平台适配器；Linux 使用独立的 Secret Service、`/proc`、X11/AT-SPI 适配器。macOS 保留 POSIX/Keychain 与 `ps` 进程树适配入口，但在完成 EAS 客户端实机验证前仍视为实验支持。
+Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.26.0 继续保留 Windows 0.21.2 已验证的 DPAPI、`client.bat`、PowerShell/CIM 进程树和 Java Swing Agent 能力，同时增加按 runId 的整次进程回收、配置备份恢复和显式瞬时错误重试白名单；Linux 使用独立的 Secret Service、`/proc`、X11/AT-SPI 适配器。macOS 保留 POSIX/Keychain 与 `ps` 进程树适配入口，但在完成 EAS 客户端实机验证前仍视为实验支持。
 
 AppImage 可直接双击运行。如当前系统未启用 FUSE，建议安装 `.deb` 包。
 
@@ -78,7 +78,7 @@ Linux 密码通过系统 Keyring/Secret Service 读取；Windows 密码使用当
 
 ## 历史版本
 
-已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 引入第一版跨平台适配层，`v0.24.1` 修正 Windows 启动配置优先级，`v0.25.0` 将凭据、进程与环境实现进一步从 core 完整抽离到平台适配器。
+已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 引入第一版跨平台适配层，`v0.24.1` 修正 Windows 启动配置优先级，`v0.25.0` 将凭据、进程与环境实现进一步从 core 完整抽离到平台适配器；`v0.26.0` 完成工程纪律与首次使用体验两轮独立验收。
 
 恢复版本的证据、分支设计和本地发布包归档位置见 [`docs/RECOVERED_HISTORY.md`](docs/RECOVERED_HISTORY.md)。
 
@@ -94,4 +94,12 @@ git log --oneline --decorate history/recovered-release-snapshots
 ```bash
 npm test
 npm run check
+npm run acceptance
 ```
+
+
+## 0.26.0 独立验收
+
+- 工程纪律：[`docs/ACCEPTANCE_BROOKS.md`](docs/ACCEPTANCE_BROOKS.md)
+- 产品体验：[`docs/ACCEPTANCE_PRODUCT.md`](docs/ACCEPTANCE_PRODUCT.md)
+- 最终勾选清单：[`docs/ACCEPTANCE_CHECKLIST.md`](docs/ACCEPTANCE_CHECKLIST.md)

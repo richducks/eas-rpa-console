@@ -65,7 +65,7 @@ async function automateLogin({ pid, account, password, spec, environment, config
     }
     while (Date.now() < verifyDeadline) {
       if (isCancelled?.()) throw Object.assign(new Error('任务已停止'), { code: 'TASK_CANCELLED' });
-      const loginWindow = await findLoginWindow({ pid, title: config.ui.login_window_title, sessionType: environment.session.type, tools: environment.tools });
+      const loginWindow = await findLoginWindow({ pid, title: config.ui.login_window_title, sessionType: environment.session.type, tools: environment.tools, platform });
       if (!loginWindow) return { backend: 'java-swing-agent' };
       await new Promise(resolve => setTimeout(resolve, config.global.poll_interval_seconds * 1000));
     }

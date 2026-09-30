@@ -4,23 +4,12 @@ global:
   poll_interval_seconds: 0.5
   retry_count: 1
   continue_on_error: true
-  screenshot_on_failure: true
-  max_instances: 3
 launcher:
   desktop_file: /opt/Kingdee/EASCloud.desktop
   command: null
   working_directory: null
+  client_directory: null
 ui:
   login_window_title: 金蝶EAS Cloud系统登录
-  success_window_title: null
-  backend_order: [atspi, keyboard, image]
-  template_directory: templates
-accounts:
-  - id: finance-01
-    name: 财务中心
-    enabled: true
-    data_center: 集团 EAS 8.8
-    username: user01
-    password_keyring_service: eascloud-rpa
-    password_keyring_key: finance-01
-    allow_duplicate_login: false
+  data_centers: []
+accounts: []
