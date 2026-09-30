@@ -17,6 +17,9 @@ let logger;
 let runner;
 let runCoordinator;
 
+const MIN_WINDOW_WIDTH = 420;
+const MIN_WINDOW_HEIGHT = 420;
+
 function loadWindowState() {
   try {
     const state = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'window-state.json'), 'utf8'));
@@ -27,8 +30,8 @@ function loadWindowState() {
     );
     if (!display) return null;
     const area = display.workArea;
-    const width = Math.max(280, Math.min(state.width, area.width));
-    const height = Math.max(280, Math.min(state.height, area.height));
+    const width = Math.max(MIN_WINDOW_WIDTH, Math.min(state.width, area.width));
+    const height = Math.max(MIN_WINDOW_HEIGHT, Math.min(state.height, area.height));
     return {
       x: Math.max(area.x, Math.min(state.x, area.x + area.width - width)),
       y: Math.max(area.y, Math.min(state.y, area.y + area.height - height)),
@@ -49,12 +52,15 @@ function saveWindowState(win) {
 
 function createWindow() {
   const state = loadWindowState();
+  const screenshotWidth = Number.parseInt(process.env.EAS_RPA_SCREENSHOT_WIDTH || '', 10);
+  const screenshotHeight = Number.parseInt(process.env.EAS_RPA_SCREENSHOT_HEIGHT || '', 10);
+  const forcedScreenshotSize = Boolean(process.env.EAS_RPA_SCREENSHOT && Number.isFinite(screenshotWidth) && Number.isFinite(screenshotHeight));
   const win = new BrowserWindow({
-    width: state?.width || 960,
-    height: state?.height || 680,
-    ...(state ? { x: state.x, y: state.y } : {}),
-    minWidth: 280,
-    minHeight: 280,
+    width: forcedScreenshotSize ? Math.max(MIN_WINDOW_WIDTH, screenshotWidth) : state?.width || 960,
+    height: forcedScreenshotSize ? Math.max(MIN_WINDOW_HEIGHT, screenshotHeight) : state?.height || 680,
+    ...(!forcedScreenshotSize && state ? { x: state.x, y: state.y } : {}),
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: MIN_WINDOW_HEIGHT,
     resizable: true,
     title: 'EAS 自动登录中心',
     backgroundColor: '#eef1f5',
@@ -67,7 +73,7 @@ function createWindow() {
   });
 
   win.on('close', () => saveWindowState(win));
-  if (state?.maximized) win.maximize();
+  if (!forcedScreenshotSize && state?.maximized) win.maximize();
 
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
@@ -83,6 +89,18 @@ function createWindow() {
       if (screenshotPage === 'environment') await win.webContents.executeJavaScript('probeEnvironment()');
       if (process.env.EAS_RPA_SCREENSHOT_THEME === 'dark') await win.webContents.executeJavaScript("document.body.classList.add('dark')");
       await new Promise(resolve => setTimeout(resolve, 250));
+      if (process.env.EAS_RPA_LAYOUT_REPORT) {
+        const layout = await win.webContents.executeJavaScript(`({
+          viewportWidth: document.documentElement.clientWidth,
+          viewportHeight: document.documentElement.clientHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          scrollHeight: document.documentElement.scrollHeight,
+          bodyScrollWidth: document.body.scrollWidth,
+          workspaceColumns: getComputedStyle(document.querySelector('.workspace')).gridTemplateColumns,
+          background: getComputedStyle(document.querySelector('.app-shell')).backgroundColor
+        })`);
+        fs.writeFileSync(process.env.EAS_RPA_LAYOUT_REPORT, JSON.stringify(layout, null, 2));
+      }
       const image = await win.webContents.capturePage();
       fs.writeFileSync(process.env.EAS_RPA_SCREENSHOT, image.toPNG());
       app.quit();

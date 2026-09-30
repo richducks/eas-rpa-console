@@ -1,6 +1,6 @@
 # EAS 自动登录中心
 
-当前源码版本为 **0.26.0**。这一版在 0.25.0 的跨平台底座上做了两轮独立验收：工程轮收紧重试、进程回收、配置恢复和凭据生命周期；产品轮重做首次使用路径与 UI，只保留“登录 / 诊断 / 日志”三层主导航。
+当前源码版本为 **0.26.1**。0.26.0 完成工程纪律与首次使用体验两轮独立验收；0.26.1 针对 Ubuntu 实机窗口缩放补齐响应式布局：去除固定 680px 页面宽度，修复放大后的底部白边、窄窗口右侧截断与横向滚动条。
 
 ![0.26.0 首次打开验收界面](docs/screenshots/acceptance-first-run.png)
 
@@ -22,10 +22,10 @@
 
 Ubuntu 版本已在本机完成构建：
 
-- Ubuntu 免安装：`dist/EAS-RPA-Console-0.26.0-x86_64.AppImage`
-- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.26.0-amd64.deb`
+- Ubuntu 免安装：`dist/EAS-RPA-Console-0.26.1-x86_64.AppImage`
+- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.26.1-amd64.deb`
 
-Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.26.0 继续保留 Windows 0.21.2 已验证的 DPAPI、`client.bat`、PowerShell/CIM 进程树和 Java Swing Agent 能力，同时增加按 runId 的整次进程回收、配置备份恢复和显式瞬时错误重试白名单；Linux 使用独立的 Secret Service、`/proc`、X11/AT-SPI 适配器。macOS 保留 POSIX/Keychain 与 `ps` 进程树适配入口，但在完成 EAS 客户端实机验证前仍视为实验支持。
+Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.26.1 继续保留 Windows 0.21.2 已验证的 DPAPI、`client.bat`、PowerShell/CIM 进程树和 Java Swing Agent 能力，以及 0.26.0 的按 runId 整次进程回收、配置备份恢复和显式瞬时错误重试白名单；Linux 使用独立的 Secret Service、`/proc`、X11/AT-SPI 适配器。macOS 保留 POSIX/Keychain 与 `ps` 进程树适配入口，但在完成 EAS 客户端实机验证前仍视为实验支持。
 
 AppImage 可直接双击运行。如当前系统未启用 FUSE，建议安装 `.deb` 包。
 
@@ -78,7 +78,7 @@ Linux 密码通过系统 Keyring/Secret Service 读取；Windows 密码使用当
 
 ## 历史版本
 
-已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 引入第一版跨平台适配层，`v0.24.1` 修正 Windows 启动配置优先级，`v0.25.0` 将凭据、进程与环境实现进一步从 core 完整抽离到平台适配器；`v0.26.0` 完成工程纪律与首次使用体验两轮独立验收。
+已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 引入第一版跨平台适配层，`v0.24.1` 修正 Windows 启动配置优先级，`v0.25.0` 将凭据、进程与环境实现进一步从 core 完整抽离到平台适配器；`v0.26.0` 完成工程纪律与首次使用体验两轮独立验收；`v0.26.1` 修复窗口缩放和响应式布局。
 
 恢复版本的证据、分支设计和本地发布包归档位置见 [`docs/RECOVERED_HISTORY.md`](docs/RECOVERED_HISTORY.md)。
 
@@ -103,3 +103,4 @@ npm run acceptance
 - 工程纪律：[`docs/ACCEPTANCE_BROOKS.md`](docs/ACCEPTANCE_BROOKS.md)
 - 产品体验：[`docs/ACCEPTANCE_PRODUCT.md`](docs/ACCEPTANCE_PRODUCT.md)
 - 最终勾选清单：[`docs/ACCEPTANCE_CHECKLIST.md`](docs/ACCEPTANCE_CHECKLIST.md)
+- 0.26.1 窗口响应式验收：[`docs/RESPONSIVE_ACCEPTANCE_0.26.1.md`](docs/RESPONSIVE_ACCEPTANCE_0.26.1.md)

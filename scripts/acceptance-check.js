@@ -43,6 +43,15 @@ assert.ok(renderer.includes('await checkCredentials();'), '批量登录前必须
 const css = read('src/renderer/styles.css');
 assert.equal((css.match(/:root\{/g) || []).length, 1, '视觉变量必须只有一套根定义，避免主题层叠互相覆盖');
 assert.ok(css.includes('.setup-card'), '首次使用卡片必须有明确视觉层级');
+assert.equal(css.includes('min-width:680px'), false, '窗口不得再用固定 680px 最小页面宽度制造横向滚动');
+assert.ok(css.includes('overflow-x:hidden'), '页面必须显式禁止整窗横向溢出');
+assert.ok(css.includes('.app-shell{width:100%;min-width:0;min-height:100vh'), '应用背景必须覆盖完整视口，避免窗口放大后露出底色');
+assert.ok(css.includes('@media(max-width:720px)'), '窄窗口必须具备单列响应式断点');
+assert.ok(css.includes('.workspace{grid-template-columns:1fr;min-height:0}'), '窄窗口工作区必须从双栏重排为单栏');
+
+const mainProcess = read('src/main.js');
+assert.ok(mainProcess.includes('const MIN_WINDOW_WIDTH = 420;'), '桌面窗口必须保留可用的最小宽度');
+assert.ok(mainProcess.includes('EAS_RPA_SCREENSHOT_WIDTH'), '响应式布局必须支持固定尺寸截图回归');
 
 const coordinator = read('src/core/run-coordinator.js');
 assert.ok(coordinator.includes('RETRYABLE_CODES'), '重试必须使用显式瞬时错误白名单');
