@@ -66,6 +66,17 @@ Linux 密码通过系统 Keyring/Secret Service 读取；Windows 密码使用当
 
 运行时配置与日志通常位于 `~/.config/eascloud-rpa-console/`。仓库中的 `config.example.yaml` 仅含虚构示例。
 
+## 历史版本
+
+已从旧发布包与 Windows 测试快照中恢复历史版本。当前 Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照。
+
+恢复版本的证据、分支设计和本地发布包归档位置见 [`docs/RECOVERED_HISTORY.md`](docs/RECOVERED_HISTORY.md)。
+
+```bash
+git tag --list --sort=version:refname
+git log --oneline --decorate history/recovered-release-snapshots
+```
+
 ## 测试
 
 ```bash
