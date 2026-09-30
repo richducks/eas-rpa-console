@@ -53,6 +53,6 @@ docs/screenshots/v0.27.0/narrow.png
 - [x] 首次启动已将旧单客户端配置迁移为 `clients[]`。
 - [x] 9 个现有账号与 7 个现有数据中心未丢失。
 - [x] `config.yaml.pre-multi-client.bak` 存在。
-- [ ] GitHub Ubuntu / Windows / macOS CI 全绿。
+- [x] GitHub Ubuntu / Windows / macOS CI 全绿。
 - [ ] GitHub Release 原生生成 Deb / AppImage / Windows EXE 与 SHA256。
 - [ ] 本机最终安装 GitHub 正式 Deb，而非临时本地包。
