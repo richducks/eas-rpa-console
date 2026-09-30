@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="70" y1="40" x2="440" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B7CF1"/>
+      <stop offset="1" stop-color="#4A37C6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#251A78" flood-opacity=".34"/>
+    </filter>
+  </defs>
+  <rect x="38" y="38" width="436" height="436" rx="116" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M128 162h256v42H179v39h171v40H179v45h210v42H128V162Z" fill="white"/>
+  <circle cx="382" cy="139" r="24" fill="#52E2AD"/>
+  <path d="m371 139 8 8 15-18" fill="none" stroke="#164F43" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="427" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="8" fill="#DCD7FF">RPA</text>
+</svg>

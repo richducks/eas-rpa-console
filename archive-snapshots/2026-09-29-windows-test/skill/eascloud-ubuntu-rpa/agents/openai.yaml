@@ -1,0 +1,4 @@
+interface:
+  display_name: "EASCloud Ubuntu RPA"
+  short_description: "构建并验证 Ubuntu 下 EAS Cloud Client 自动登录"
+  default_prompt: "使用 $eascloud-ubuntu-rpa 在当前项目中实现或改进 EAS Cloud Client 自动登录。"

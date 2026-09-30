@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self'" />
+  <title>EAS RPA 问题标记台</title>
+  <link rel="stylesheet" href="marker.css" />
+</head>
+<body>
+  <aside class="review-panel">
+    <header><div><strong>EAS RPA 问题标记台</strong><span>点击界面位置，记录待解决问题</span></div><b id="issue-count">0</b></header>
+    <div class="actions">
+      <button id="mark-toggle" class="primary">开始标记</button>
+      <button id="clear-all">清空</button>
+    </div>
+    <p class="hint" id="hint">开启标记后，点击右侧界面中的问题位置。</p>
+    <section id="issue-list" class="issue-list"></section>
+    <footer>
+      <button id="copy-json">复制问题 JSON</button>
+      <button id="download-json">下载 JSON</button>
+    </footer>
+  </aside>
+  <main class="preview-shell">
+    <div class="preview-bar"><span><i></i> RPA 网页预览</span><button id="reload-preview">重新载入</button></div>
+    <div class="frame-wrap" id="frame-wrap">
+      <iframe id="rpa-preview" src="app.html" title="EAS RPA 网页版"></iframe>
+      <div id="badge-layer"></div>
+    </div>
+  </main>
+  <dialog id="issue-dialog">
+    <form method="dialog" id="issue-form">
+      <h2>记录问题</h2>
+      <p id="target-summary"></p>
+      <label>问题说明<textarea id="issue-text" rows="4" required placeholder="例如：按钮点击后没有反应"></textarea></label>
+      <label>优先级<select id="issue-priority"><option value="high">高</option><option value="medium" selected>中</option><option value="low">低</option></select></label>
+      <div><button value="cancel">取消</button><button value="default" class="primary" id="save-issue">保存标记</button></div>
+    </form>
+  </dialog>
+  <script src="marker.js"></script>
+</body>
+</html>
