@@ -1,6 +1,6 @@
 {
   "name": "eascloud-rpa-console",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "private": true,
   "description": "EAS Cloud multi-account RPA desktop console",
   "author": {

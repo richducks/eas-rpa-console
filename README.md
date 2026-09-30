@@ -1,6 +1,6 @@
 # EAS 自动登录中心
 
-当前源码版本为 **0.24.0**。这是 EAS Cloud 多账号自动登录控制台。自 0.24.0 起 Windows / Linux 共用同一套业务代码，操作系统差异统一收敛到 `src/platform` 平台适配层。
+当前源码版本为 **0.24.1**。这是 EAS Cloud 多账号自动登录控制台。自 0.24.0 起 Windows / Linux 共用同一套业务代码，操作系统差异统一收敛到 `src/platform` 平台适配层；0.24.1 修正了 Windows 下显式启动命令被备用客户端目录错误阻断的问题。
 
 ![EAS 自动登录中心界面](docs/screenshots/latest-ui.png)
 
@@ -22,10 +22,10 @@
 
 Ubuntu 版本已在本机完成构建：
 
-- Ubuntu 免安装：`dist/EAS-RPA-Console-0.24.0-x86_64.AppImage`
-- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.24.0-amd64.deb`
+- Ubuntu 免安装：`dist/EAS-RPA-Console-0.24.1-x86_64.AppImage`
+- Ubuntu/Debian 安装包：`dist/EAS-RPA-Console-0.24.1-amd64.deb`
 
-Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.24.0 已把 Windows 0.21.2 的 DPAPI、`client.bat`、Windows 进程树和 Java Swing Agent 能力纳入统一主线；Windows 0.24.0 仍应在 Windows 主机原生构建并做一次实机登录回归。macOS 目前只复用 POSIX 启动和 Keychain/keytar 基础能力，不宣称已经完成 EAS 实机自动登录验证。
+Windows 与 macOS 包必须分别在 Windows、macOS 上构建。不要分发在 Ubuntu 上交叉构建的包：`keytar` 是原生凭据模块，交叉构建时可能混入错误平台二进制。0.24.x 已把 Windows 0.21.2 的 DPAPI、`client.bat`、Windows 进程树和 Java Swing Agent 能力纳入统一主线；Windows 0.24.1 仍应在 Windows 主机原生构建并做一次 EAS 实机登录回归。macOS 目前只复用 POSIX 启动和 Keychain/keytar 基础能力，不宣称已经完成 EAS 实机自动登录验证。
 
 AppImage 可直接双击运行。如当前系统未启用 FUSE，建议安装 `.deb` 包。
 
@@ -77,7 +77,7 @@ Linux 密码通过系统 Keyring/Secret Service 读取；Windows 密码使用当
 
 ## 历史版本
 
-已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 为跨平台适配层重构后的当前主线。
+已从旧发布包与 Windows 测试快照中恢复历史版本。Git 中保留 `v0.13.0` 至 `v0.23.0` 的可证明历史版本，其中 `v0.21.2-windows-test` 为独立 Windows 实机测试快照；`v0.24.0` 引入跨平台适配层，`v0.24.1` 为通过三平台 CI 修正后的当前主线。
 
 恢复版本的证据、分支设计和本地发布包归档位置见 [`docs/RECOVERED_HISTORY.md`](docs/RECOVERED_HISTORY.md)。
 

@@ -13,10 +13,11 @@ GitHub 仓库：`https://github.com/richducks/eas-rpa-console`
 ## 当前主线
 
 - 分支：`main`
-- 当前源码版本：`0.24.0`
+- 当前源码版本：`0.24.1`
 - 用途：Linux / Windows 金蝶 EAS Cloud 多账号自动登录控制台
 - Git 历史：继承 GitHub 原有 `v0.20.0` 历史后继续演进，没有重建或覆盖远端历史
 - 0.24.0：Windows / Linux 主线完成平台适配层重构，`src/platform` 统一承载 OS 差异
+- 0.24.1：修正 Windows 显式 `launcher.command` 被历史默认 `D:\\Kingdee\\eas` 路径校验错误阻断的问题
 
 ## 历史快照
 

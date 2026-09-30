@@ -19,6 +19,15 @@ test('首次启动允许尚未选择客户端，执行任务时再要求启动�
   assert.match(strict.errors.join(' '), /请指定/);
 });
 
+test('显式启动命令优先于备用客户端目录', () => {
+  const config = copy();
+  config.launcher.desktop_file = null;
+  config.launcher.command = [process.execPath, '-e', 'process.exit(0)'];
+  config.launcher.client_directory = 'Z:\\definitely-not-existing\\eas';
+  const strict = validateConfig(config, { checkPaths: true });
+  assert.equal(strict.valid, true, strict.errors.join('；'));
+});
+
 test('拒绝明文密码', () => {
   const config = copy();
   config.accounts[0].password = 'should-never-be-saved';
